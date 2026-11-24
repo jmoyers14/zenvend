@@ -65,7 +65,6 @@ export function PurchasesScreen() {
     };
   }, [preset, customFrom, customTo]);
 
-  // One range object for both queries, so the total always covers the list.
   const rangeInput = { from: range.from ?? undefined, to: range.to ?? undefined };
   const purchases = useInfiniteQuery(
     trpc.purchases.list.infiniteQueryOptions(

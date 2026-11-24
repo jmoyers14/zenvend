@@ -3,7 +3,7 @@ import { orgProtectedProcedure, router } from "../trpc.ts";
 import { ANALYTICS_EVENTS } from "../analytics/events.ts";
 import { DEFAULT_PURCHASE_PAGE_SIZE } from "../services/PurchaseService/PurchaseService.ts";
 import { purchaseDto } from "../schemas/index.ts";
-import { objectId } from "./validators.ts";
+import { instant, objectId } from "./validators.ts";
 
 const purchaseInput = z.object({
   purchasedAt: z.string().datetime(),
@@ -43,10 +43,9 @@ const purchaseEditInput = purchaseInput
   .omit({ clientRequestId: true })
   .extend({ id: objectId() });
 
-// The list and its summary share this so both cover the same purchases.
 const purchaseDateRangeInput = z.object({
-  from: z.string().datetime().optional(),
-  to: z.string().datetime().optional(),
+  from: instant().optional(),
+  to: instant().optional(),
 });
 
 // Cursor pagination over (purchasedAt desc, _id desc) plus an optional date
@@ -70,7 +69,6 @@ export const purchasesRouter = router({
       ctx.services.purchaseService.list(ctx.auth.orgId, input),
     ),
 
-  // The list arrives a page at a time; this is the total for the whole range.
   summary: orgProtectedProcedure
     .input(purchaseDateRangeInput)
     .query(({ ctx, input }) =>

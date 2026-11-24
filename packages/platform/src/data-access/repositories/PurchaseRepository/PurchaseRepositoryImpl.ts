@@ -3,6 +3,7 @@ import type { Types } from "mongoose";
 import type { CostBasisLine, ReplacementCostLine } from "@zenvend/domain";
 import { PurchaseModel } from "../../models/Purchase.ts";
 import { toId } from "../ids.ts";
+import { instantBounds } from "../ranges.ts";
 import type {
   Purchase,
   PurchaseDateRange,
@@ -35,29 +36,18 @@ type PurchaseDoc = {
 const LIST_SORT = { purchasedAt: -1, _id: -1 } as const;
 
 /**
- * The org's live purchases inside a date range. The list and the summary both
- * start here, so the total always covers exactly the rows the list pages through.
- *
- * Also a $match stage, where Mongoose casts nothing: every value must already
- * be its stored type. orgId is stored as a string and purchasedAt as a Date.
+ * The org's live purchases in a date range — the base of both the list and
+ * the summary, so the total always covers exactly the rows the list pages.
  */
-export function purchaseRangeFilter(
+function purchaseRangeFilter(
   orgId: string,
   range: PurchaseDateRange,
 ): Record<string, unknown> {
   const filter: Record<string, unknown> = { orgId, deletedAt: null };
-
-  const bounds: Record<string, Date> = {};
-  if (range.from) {
-    bounds.$gte = new Date(range.from);
-  }
-  if (range.to) {
-    bounds.$lte = new Date(range.to);
-  }
-  if (Object.keys(bounds).length > 0) {
+  const bounds = instantBounds(range);
+  if (bounds) {
     filter.purchasedAt = bounds;
   }
-
   return filter;
 }
 

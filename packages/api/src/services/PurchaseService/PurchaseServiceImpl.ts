@@ -83,10 +83,7 @@ export class PurchaseServiceImpl implements PurchaseService {
   }
 
   summary(orgId: string, range: PurchaseDateRange): Promise<PurchaseSummary> {
-    return this.purchases.findSummaryByOrg(orgId, {
-      from: range.from ?? null,
-      to: range.to ?? null,
-    });
+    return this.purchases.findSummaryByOrg(orgId, range);
   }
 
   get(orgId: string, id: string): Promise<Purchase | null> {

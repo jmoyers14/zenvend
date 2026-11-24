@@ -22,10 +22,7 @@ export interface PurchaseRepository {
    * only list in the app that grows without limit.
    */
   findPageByOrg(orgId: string, query: PurchaseListQuery): Promise<PurchasePage>;
-  /**
-   * Spend and count over the same purchases findPageByOrg would page through
-   * for this range, summed in the database rather than across loaded pages.
-   */
+  /** Spend and count over every purchase findPageByOrg would page through. */
   findSummaryByOrg(orgId: string, range: PurchaseDateRange): Promise<PurchaseSummary>;
   findById(orgId: string, id: string): Promise<Purchase | null>;
   /**

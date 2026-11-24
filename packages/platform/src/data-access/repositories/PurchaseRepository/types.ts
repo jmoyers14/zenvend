@@ -48,7 +48,7 @@ export interface PurchaseCursor {
   id: string;
 }
 
-/** A window on purchasedAt. Shared by the list and its summary so both cover the same purchases. */
+/** A window on purchasedAt. */
 export interface PurchaseDateRange {
   /** Inclusive lower bound on purchasedAt, as an ISO instant. */
   from?: string | null;
