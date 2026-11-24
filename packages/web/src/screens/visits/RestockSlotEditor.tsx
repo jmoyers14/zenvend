@@ -23,7 +23,12 @@ import {
   SlotEditorHeader,
 } from "./SlotEditor.tsx";
 import { SlotContentsList } from "./SlotContentsList.tsx";
-import { type RowAction, type SlotItem, slotContentsFor } from "./slotContents.ts";
+import {
+  type Departure,
+  type RowAction,
+  type SlotItem,
+  slotContentsFor,
+} from "./slotContents.ts";
 import { isCounted, rowsInSlot, type VisitRow } from "./visitRows.ts";
 
 /** A Move or Swap waiting for its destination on the map. */
@@ -107,7 +112,6 @@ export function RestockSlotEditor({
   const isUncounted = slotRows.some((row) => !isCounted(row));
   const isAnswered = isSlotAnswered(slot);
   const isPicking = pick?.row.slotCode === slotCode;
-  const isPanelOpen = panel !== null || isPicking;
   const price = restock.prices[slotCode] ?? "";
   const priceCents = parseDollarsToCents(price);
   const unloadable = unloadableProductIdsFor(slot);
@@ -120,12 +124,28 @@ export function RestockSlotEditor({
       : rowsInSlot(rows, pick.partnerSlotCode).filter(isCounted);
 
   const panelKey = panel !== null && "key" in panel ? panel.key : null;
-  const editingKey = isPicking && pick ? slotProductKey(pick.row) : panelKey;
   const panelItem = contents.items.find((item) => item.key === panelKey);
+  // A keyed panel whose row has gone (its arrival undone) renders nothing, so
+  // it counts as closed.
+  const isAddStockOpen = panel?.kind === "add-stock" && panelItem !== undefined;
+  const isPullOpen = panel?.kind === "pull" && panelItem?.kind === "counted";
+  const isPanelOpen =
+    isAddStockOpen || isPullOpen || panel?.kind === "add-product" || isPicking;
+  const openPanelKey = isAddStockOpen || isPullOpen ? panelKey : null;
+  const editingKey = isPicking && pick ? slotProductKey(pick.row) : openPanelKey;
   const hasUnansweredCounted = contents.items.some(
     (item) => item.kind === "counted" && !item.isAnswered,
   );
   const closePanel = () => onPanelChange(null);
+
+  const handleUndoDeparture = (departure: Departure) => {
+    const next = restockWithAction(restock, departure.row, null);
+    const nextItems = slotContentsFor({ ...slot, restock: next }).items;
+    if (panelKey !== null && !nextItems.some((item) => item.key === panelKey)) {
+      closePanel();
+    }
+    onRestockChange(next);
+  };
 
   const handleAction = (item: SlotItem, action: RowAction) => {
     onCancelPick();
@@ -180,7 +200,8 @@ export function RestockSlotEditor({
       <SlotEditorHeader
         slotCode={slotCode}
         shelfLabel={shelfLabel}
-        productCount={contents.items.length}
+        productNames={isUncounted ? slotRows.map((row) => nameOf(row.productId)) : undefined}
+        productCount={isUncounted ? undefined : contents.items.length}
         price={
           <>
             <PriceLabel>Price</PriceLabel>
@@ -240,9 +261,7 @@ export function RestockSlotEditor({
           editingKey={editingKey}
           nameOf={nameOf}
           onAction={handleAction}
-          onUndoDeparture={(departure) =>
-            onRestockChange(restockWithAction(restock, departure.row, null))
-          }
+          onUndoDeparture={handleUndoDeparture}
           onAddProduct={() => {
             onCancelPick();
             onPanelChange({ kind: "add-product" });
@@ -255,7 +274,7 @@ export function RestockSlotEditor({
         />
       )}
 
-      {panel?.kind === "add-stock" && panelItem ? (
+      {isAddStockOpen && panelItem ? (
         <AddStockPanel
           key={panelItem.key}
           item={panelItem}
@@ -267,7 +286,7 @@ export function RestockSlotEditor({
         />
       ) : null}
 
-      {panel?.kind === "pull" && panelItem?.kind === "counted" ? (
+      {isPullOpen && panelItem?.kind === "counted" ? (
         <PullPanel
           key={panelItem.key}
           item={panelItem}

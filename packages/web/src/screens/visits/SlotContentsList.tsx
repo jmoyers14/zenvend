@@ -81,17 +81,25 @@ export function SlotContentsList({
       ) : null}
       {departures.length > 0 ? (
         <ul className="grid gap-1">
-          {departures.map((departure) => (
-            <li
-              key={departure.key}
-              className="flex flex-wrap items-center gap-1 text-body-sm text-muted-strong"
-            >
-              Moved out: {departureLabelFor(departure, { nameOf })} ·
-              <Button variant="text" size="sm" onClick={() => onUndoDeparture(departure)}>
-                Undo
-              </Button>
-            </li>
-          ))}
+          {departures.map((departure) => {
+            const label = departureLabelFor(departure, { nameOf });
+            return (
+              <li
+                key={departure.key}
+                className="flex flex-wrap items-center gap-1 text-body-sm text-muted-strong"
+              >
+                {departure.action.kind === "moved" ? `Moved out: ${label}` : label} ·
+                <Button
+                  variant="text"
+                  size="sm"
+                  aria-label={`Undo ${label}`}
+                  onClick={() => onUndoDeparture(departure)}
+                >
+                  Undo
+                </Button>
+              </li>
+            );
+          })}
         </ul>
       ) : null}
       <button

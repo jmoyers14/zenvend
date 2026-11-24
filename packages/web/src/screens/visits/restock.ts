@@ -225,6 +225,25 @@ export const restockWithoutNewStock = (
   ),
 });
 
+/** A source "Came from X?" linked, with the action it had before. */
+export interface LinkedSource {
+  row: VisitRow;
+  action: ProductAction | undefined;
+}
+
+/** Takes back a product added through Add a product, and only that: its
+ *  arrival goes, and a source it was linked to gets its earlier action back. */
+export const restockWithoutAddedProduct = (
+  restock: Restock,
+  { key, linkedSource }: { key: SlotProduct; linkedSource: LinkedSource | null },
+): Restock => {
+  if (linkedSource === null) {
+    return restockWithoutNewStock(restock, key);
+  }
+  const cleared = restockWithAction(restock, linkedSource.row, null);
+  return restockWithAction(cleared, linkedSource.row, linkedSource.action ?? null);
+};
+
 export const restockWithArrivalChange = (
   restock: Restock,
   key: SlotProduct,

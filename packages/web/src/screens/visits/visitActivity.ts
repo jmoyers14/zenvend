@@ -286,28 +286,3 @@ export const restockTileValueFor = ({
   );
   return signedChange(net);
 };
-
-const addedText = (added: number | null): string | null => {
-  if (added === null) {
-    return null;
-  }
-  return added > 0 ? `Added ${added}` : "Nothing added";
-};
-
-const describeActivity = (activity: ProductActivity): string | null => {
-  const pullNote = activity.partialPull ? partialPullNote(activity.partialPull) : null;
-  switch (activity.outcome) {
-    case "uncounted":
-      return null;
-    case "unanswered":
-      // A pull logged before the product's answer still shows.
-      return pullNote;
-    case "stayed":
-      return [pullNote, addedText(activity.added)].filter(Boolean).join(", ");
-    case "moved":
-    case "taken-out":
-      return activity.notes[0] ?? null;
-    case "arrived":
-      return [activity.notes[0], addedText(activity.added)].filter(Boolean).join(", ");
-  }
-};

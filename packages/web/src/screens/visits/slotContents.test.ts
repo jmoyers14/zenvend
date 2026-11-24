@@ -9,6 +9,8 @@ import {
 } from "./restock.ts";
 import { isSlotAnswered } from "./restockSlots.ts";
 import {
+  addStockEntryFor,
+  arrivalAddedFor,
   type Departure,
   departureLabelFor,
   isTakeOutAsked,
@@ -345,5 +347,89 @@ describe("isTakeOutAsked", () => {
     const restock = restockWithAction(start, item.row, { kind: "added", added: "8" });
 
     expect(isTakeOutAsked({ item, restock, quantity: 4 })).toBe(false);
+  });
+
+  it("is true when the row says Added 0 and the quantity is everything counted", () => {
+    const restock = restockWithAction(start, item.row, { kind: "added", added: "0" });
+
+    expect(isTakeOutAsked({ item, restock, quantity: 4 })).toBe(true);
+  });
+});
+
+describe("addStockEntryFor", () => {
+  const rows = buildRows();
+  const start = buildRestock({ shelves: SHELVES, rows });
+  const moved = restockWithAction(start, rowFor(rows, "A1", "coke"), {
+    kind: "moved",
+    toSlotCode: "A3",
+    isSwap: false,
+  });
+  const arrivalWith = (added: string) => {
+    const restock = restockWithArrivalChange(
+      moved,
+      { slotCode: "A3", productId: "coke" },
+      { added },
+    );
+    const item = slotContentsFor({ rows, restock, slotCode: "A3" }).items[0] as SlotItem;
+    return { item, restock };
+  };
+
+  it("adds on top of what was left after the pull for a counted product", () => {
+    const item = counted(rows, "A1");
+    const restock = restockWithAction(start, item.row, { kind: "added", added: "3" });
+
+    expect(addStockEntryFor(item, restock)).toEqual({
+      baseUnits: 4,
+      isOnTopOfMove: false,
+      wentIn: "3",
+    });
+  });
+
+  it("edits the new units on top of what moved in", () => {
+    const { item, restock } = arrivalWith("6");
+
+    const entry = addStockEntryFor(item, restock);
+
+    expect(entry).toEqual({ baseUnits: 4, isOnTopOfMove: true, wentIn: "2" });
+    expect(arrivalAddedFor(entry, "5")).toBe("9");
+  });
+
+  it("falls back to the plain total when the arrival holds fewer than moved", () => {
+    const { item, restock } = arrivalWith("2");
+
+    const entry = addStockEntryFor(item, restock);
+
+    expect(entry).toEqual({ baseUnits: 0, isOnTopOfMove: false, wentIn: "2" });
+    expect(arrivalAddedFor(entry, "3")).toBe("3");
+  });
+
+  it("falls back to the plain total when the arrival has no Added", () => {
+    const { item, restock } = arrivalWith("");
+
+    expect(addStockEntryFor(item, restock)).toEqual({
+      baseUnits: 0,
+      isOnTopOfMove: false,
+      wentIn: "",
+    });
+  });
+
+  it("takes the plain total for new stock", () => {
+    const withStock = restockWithNewStock(start, {
+      slotCode: "A3",
+      productId: "water",
+      tracksExpiration: false,
+    });
+    const restock = restockWithArrivalChange(
+      withStock,
+      { slotCode: "A3", productId: "water" },
+      { added: "7" },
+    );
+    const item = slotContentsFor({ rows, restock, slotCode: "A3" }).items[0] as SlotItem;
+
+    expect(addStockEntryFor(item, restock)).toEqual({
+      baseUnits: 0,
+      isOnTopOfMove: false,
+      wentIn: "7",
+    });
   });
 });

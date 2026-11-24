@@ -174,6 +174,42 @@ export const rowActionsFor = (item: SlotItem): RowAction[] => {
   ];
 };
 
+/** How Add stock reads for one product: the units the typed number goes on
+ *  top of, and the input's starting text. */
+export interface AddStockEntry {
+  baseUnits: number;
+  /** The typed number is new units on top of what moved in, not the total. */
+  isOnTopOfMove: boolean;
+  wentIn: string;
+}
+
+export const addStockEntryFor = (item: SlotItem, restock: Restock): AddStockEntry => {
+  if (item.kind === "counted") {
+    const action = restock.actions[item.key];
+    return {
+      baseUnits: leftAfterPull(item.row) ?? 0,
+      isOnTopOfMove: false,
+      wentIn: action?.kind === "added" ? action.added : "",
+    };
+  }
+  const { count, movedUnits } = item;
+  // Fewer than moved means the total was typed before the link or the source
+  // count changed since, so "on top" would be negative: edit the total instead.
+  if (movedUnits === null || count === null || count < movedUnits) {
+    return { baseUnits: 0, isOnTopOfMove: false, wentIn: item.arrival.added };
+  }
+  return { baseUnits: movedUnits, isOnTopOfMove: true, wentIn: String(count - movedUnits) };
+};
+
+/** The arrival's Added once `wentIn` is typed into Add stock. */
+export const arrivalAddedFor = (entry: AddStockEntry, wentIn: string): string => {
+  const wentInCount = parseCount(wentIn);
+  if (!entry.isOnTopOfMove || wentInCount === null) {
+    return wentIn;
+  }
+  return String(entry.baseUnits + wentInCount);
+};
+
 /** Typing a quantity equal to everything counted most likely means the product
  *  is leaving, so the editor asks whether to take it out. */
 export const isTakeOutAsked = ({

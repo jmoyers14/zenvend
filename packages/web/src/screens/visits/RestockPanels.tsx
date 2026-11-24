@@ -1,3 +1,4 @@
+import { slotProductKey } from "@zenvend/domain";
 import { useMemo, useState } from "react";
 import {
   Button,
@@ -13,20 +14,26 @@ import type { ProductOption } from "../machines/ProductCombobox.tsx";
 import {
   type Arrival,
   arrivalsIn,
+  type LinkedSource,
   type PullReason,
   type Restock,
   restockWithAction,
   restockWithArrivalChange,
   restockWithNewStock,
+  restockWithoutAddedProduct,
   restockWithSourceLinked,
   suggestedSourcesFor,
 } from "./restock.ts";
 import { EditorInset } from "./SlotEditor.tsx";
-import { isTakeOutAsked, type SlotItem } from "./slotContents.ts";
+import {
+  addStockEntryFor,
+  arrivalAddedFor,
+  isTakeOutAsked,
+  type SlotItem,
+} from "./slotContents.ts";
 import { REMOVAL_LABELS } from "./visitActivity.ts";
 import {
   hasPartialPull,
-  leftAfterPull,
   parseCount,
   rowWithRemoved,
   rowWithRemovedReason,
@@ -40,19 +47,6 @@ const PULL_REASONS: { value: PullReason; label: string }[] = (
 ).map((value) => ({ value, label: capitalize(REMOVAL_LABELS[value]) }));
 
 type CountedItem = Extract<SlotItem, { kind: "counted" }>;
-
-/** The input's starting text: what went in, or for a moved-in product only
- *  the units on top of what moved. */
-const initialWentInFor = (item: SlotItem, restock: Restock): string => {
-  if (item.kind === "counted") {
-    const action = restock.actions[item.key];
-    return action?.kind === "added" ? action.added : "";
-  }
-  if (item.movedUnits === null || item.count === null) {
-    return item.arrival.added;
-  }
-  return String(Math.max(0, item.count - item.movedUnits));
-};
 
 /** How many went in for one product. A moved-in product edits the new units
  *  on top, and its arrival keeps the total. */
@@ -71,15 +65,15 @@ export function AddStockPanel({
   onRestockChange: (next: Restock) => void;
   onDone: () => void;
 }) {
-  const [wentIn, setWentIn] = useState(() => initialWentInFor(item, restock));
+  // Fixed at open, so the label and the typed number keep one meaning.
+  const [entry] = useState(() => addStockEntryFor(item, restock));
+  const [wentIn, setWentIn] = useState(entry.wentIn);
   const [bestBy, setBestBy] = useState(item.kind === "arrival" ? item.arrival.bestBy : "");
 
   const name = nameOf(item.productId);
-  const movedUnits = item.kind === "arrival" ? item.movedUnits : null;
-  const isMovedIn = movedUnits !== null;
+  const isMovedIn = item.kind === "arrival" && item.movedUnits !== null;
   const wentInCount = parseCount(wentIn);
-  const baseUnits = item.kind === "counted" ? leftAfterPull(item.row) : movedUnits;
-  const nowCount = wentInCount === null ? null : (baseUnits ?? 0) + wentInCount;
+  const nowCount = wentInCount === null ? null : entry.baseUnits + wentInCount;
   const tracksExpiration = item.kind === "arrival" && item.arrival.tracksExpiration;
 
   const handleDone = () => {
@@ -89,7 +83,7 @@ export function AddStockPanel({
     if (item.kind === "counted") {
       onRestockChange(restockWithAction(restock, item.row, { kind: "added", added: wentIn }));
     } else {
-      const added = isMovedIn ? String((movedUnits ?? 0) + wentInCount) : wentIn;
+      const added = arrivalAddedFor(entry, wentIn);
       onRestockChange(restockWithArrivalChange(restock, item.arrival, { added, bestBy }));
     }
     onDone();
@@ -110,7 +104,7 @@ export function AddStockPanel({
   return (
     <EditorInset title={`Add stock · ${name}`} onCancel={onDone}>
       <WentInFields
-        label={isMovedIn ? "New units on top" : "How many went in?"}
+        label={entry.isOnTopOfMove ? "New units on top" : "How many went in?"}
         name={name}
         wentIn={wentIn}
         nowCount={nowCount}
@@ -373,9 +367,9 @@ export function AddProductPanel({
 }) {
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<ProductOption | null>(null);
-  // Restock before the pick. Cancel restores it, so a "Came from X?" link also
-  // gives the source back its earlier answer.
-  const [restockBeforePick, setRestockBeforePick] = useState<Restock | null>(null);
+  // Cancel takes back only what this panel did, so the source's earlier answer
+  // is kept rather than a snapshot of the whole restock.
+  const [linkedSource, setLinkedSource] = useState<LinkedSource | null>(null);
   const [wentIn, setWentIn] = useState("");
   const [bestBy, setBestBy] = useState("");
   const alphabetical = useMemo(
@@ -401,7 +395,6 @@ export function AddProductPanel({
         tracksExpiration: tracksExpirationOf(product.id),
       }),
     );
-    setRestockBeforePick(restock);
     setPicked(product);
   };
 
@@ -414,16 +407,19 @@ export function AddProductPanel({
   };
 
   const handleCancel = () => {
-    if (restockBeforePick) {
-      onRestockChange(restockBeforePick);
+    if (picked) {
+      const key = { slotCode, productId: picked.id };
+      onRestockChange(restockWithoutAddedProduct(restock, { key, linkedSource }));
     }
     onDone();
   };
 
   const handleLinkSource = (source: VisitRow) => {
-    if (arrival) {
-      onRestockChange(restockWithSourceLinked(restock, { arrival, source }));
+    if (!arrival) {
+      return;
     }
+    setLinkedSource({ row: source, action: restock.actions[slotProductKey(source)] });
+    onRestockChange(restockWithSourceLinked(restock, { arrival, source }));
   };
 
   return (

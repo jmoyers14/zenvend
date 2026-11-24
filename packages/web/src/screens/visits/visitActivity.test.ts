@@ -32,9 +32,6 @@ const PRODUCTS = [
   { id: "lays", tracksExpiration: false },
 ];
 
-const NAMES: Record<string, string> = { coke: "Coke", doritos: "Doritos", lays: "Lay's" };
-const nameOf = (id: string) => NAMES[id] ?? id;
-
 /** Rows filled to 10 last visit, with A1 = 4, Doritos = 7, Lay's = 0. */
 const buildRows = (patch: Partial<Record<string, Partial<VisitRow>>> = {}): VisitRow[] =>
   buildVisitRows({

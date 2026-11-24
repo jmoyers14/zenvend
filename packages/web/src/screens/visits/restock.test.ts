@@ -6,6 +6,7 @@ import {
   restockWithAction,
   restockWithArrivalChange,
   restockWithNewStock,
+  restockWithoutAddedProduct,
   restockWithoutNewStock,
   restockWithPrice,
   restockWithRestUnchanged,
@@ -461,6 +462,49 @@ const move = (toSlotCode: string) => ({
   kind: "moved" as const,
   toSlotCode,
   isSwap: false,
+});
+
+describe("restockWithoutAddedProduct", () => {
+  const rows = countedRows();
+  const coke = rowFor(rows, "A1", "coke");
+  const start = buildRestock({ shelves: SHELVES, rows });
+  const pulled = restockWithAction(start, coke, { kind: "pulled", reason: "destocked" });
+  const key = { slotCode: "B1", productId: "coke" };
+  const withStock = restockWithNewStock(pulled, { ...key, tracksExpiration: true });
+
+  it("removes the new stock and keeps edits made since", () => {
+    const edited = restockWithPrice(withStock, "A2", "2.00");
+
+    const next = restockWithoutAddedProduct(edited, { key, linkedSource: null });
+
+    expect(next.arrivals).toEqual([]);
+    expect(next.prices.A2).toBe("2.00");
+    expect(next.actions[slotProductKey(coke)]).toEqual({ kind: "pulled", reason: "destocked" });
+  });
+
+  it("gives a linked source back its earlier action", () => {
+    const [arrival] = arrivalsIn(withStock, "B1");
+    const linked = restockWithSourceLinked(withStock, {
+      arrival: arrival as NonNullable<typeof arrival>,
+      source: coke,
+    });
+    const edited = restockWithAction(linked, rowFor(rows, "A2", "lays"), {
+      kind: "added",
+      added: "3",
+    });
+
+    const next = restockWithoutAddedProduct(edited, {
+      key,
+      linkedSource: { row: coke, action: pulled.actions[slotProductKey(coke)] },
+    });
+
+    expect(next.arrivals).toEqual([]);
+    expect(next.actions[slotProductKey(coke)]).toEqual({ kind: "pulled", reason: "destocked" });
+    expect(next.actions[slotProductKey(rowFor(rows, "A2", "lays"))]).toEqual({
+      kind: "added",
+      added: "3",
+    });
+  });
 });
 
 describe("swap partner and re-moves", () => {

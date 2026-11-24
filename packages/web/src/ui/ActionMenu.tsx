@@ -49,6 +49,10 @@ export function ActionMenu({
   };
 
   const handleMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // Closed, the keys belong to the page (Escape cancels a pick there).
+    if (!isOpen || items.length === 0) {
+      return;
+    }
     if (event.key === "Escape") {
       event.stopPropagation();
       closeAndRestoreFocus();
