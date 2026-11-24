@@ -2,7 +2,8 @@ import { injectable } from "tsyringe";
 import type { Types } from "mongoose";
 import type { RemovalReason } from "@zenvend/domain";
 import { VisitModel } from "../../models/Visit.ts";
-import { toId } from "../ids.ts";
+import { toId } from "../../utils/ids.ts";
+import { instantBounds } from "../../utils/ranges.ts";
 import type {
   Visit,
   VisitInput,
@@ -63,7 +64,7 @@ export function visitListFilter(
   if (filter.machineId) {
     query.machineId = filter.machineId;
   }
-  const range = countedAtRange(filter);
+  const range = instantBounds(filter);
   if (range) {
     query.countedAt = range;
   }
@@ -85,7 +86,7 @@ export function visitWindowFilter(
     machineId,
     deletedAt: null,
   };
-  const bounds = countedAtRange(range);
+  const bounds = instantBounds(range);
   if (bounds) {
     query.countedAt = bounds;
   }
@@ -108,17 +109,6 @@ export function visitPredecessorFilter(
     deletedAt: null,
     countedAt: { $lt: new Date(from) },
   };
-}
-
-function countedAtRange(range: VisitRange): Record<string, Date> | null {
-  const bounds: Record<string, Date> = {};
-  if (range.from) {
-    bounds.$gte = new Date(range.from);
-  }
-  if (range.to) {
-    bounds.$lte = new Date(range.to);
-  }
-  return Object.keys(bounds).length > 0 ? bounds : null;
 }
 
 @injectable()

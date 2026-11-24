@@ -10,9 +10,11 @@ import type {
   ProductRepository,
   Purchase,
   PurchaseCursor,
+  PurchaseDateRange,
   PurchaseInput,
   PurchaseLine,
   PurchaseRepository,
+  PurchaseSummary,
   PurchaseUpdate,
 } from "@zenvend/platform";
 import { isDuplicateKey, ServiceError } from "../errors.ts";
@@ -78,6 +80,10 @@ export class PurchaseServiceImpl implements PurchaseService {
           ? encodePurchaseCursor({ purchasedAt: last.purchasedAt, id: last.id })
           : null,
     };
+  }
+
+  summary(orgId: string, range: PurchaseDateRange): Promise<PurchaseSummary> {
+    return this.purchases.findSummaryByOrg(orgId, range);
   }
 
   get(orgId: string, id: string): Promise<Purchase | null> {

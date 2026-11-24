@@ -391,5 +391,21 @@ describe("PurchaseService", () => {
       );
     });
   });
-});
 
+  // Range edges, deletion and org scoping are the repository's job and are
+  // covered against real Mongo in PurchaseRepositoryImpl.integration.test.ts.
+  it("summarises every purchase in the range, past the first page", async () => {
+    for (let index = 0; index < 60; index += 1) {
+      const day = String((index % 30) + 1).padStart(2, "0");
+      await service.create(
+        ORG,
+        draft({
+          purchasedAt: `2026-09-${day}T12:00:00.000Z`,
+          lines: [{ productId: cokeId, units: 1, totalCostCents: 100 }],
+        }),
+      );
+    }
+
+    expect(await service.summary(ORG, {})).toEqual({ spentCents: 6000, count: 60 });
+  });
+});

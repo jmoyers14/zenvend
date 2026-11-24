@@ -3,7 +3,7 @@ import { orgProtectedProcedure, router } from "../trpc.ts";
 import { ANALYTICS_EVENTS } from "../analytics/events.ts";
 import { DEFAULT_PURCHASE_PAGE_SIZE } from "../services/PurchaseService/PurchaseService.ts";
 import { purchaseDto } from "../schemas/index.ts";
-import { objectId } from "./validators.ts";
+import { instant, objectId } from "./validators.ts";
 
 const purchaseInput = z.object({
   purchasedAt: z.string().datetime(),
@@ -43,6 +43,11 @@ const purchaseEditInput = purchaseInput
   .omit({ clientRequestId: true })
   .extend({ id: objectId() });
 
+const purchaseDateRangeInput = z.object({
+  from: instant().optional(),
+  to: instant().optional(),
+});
+
 // Cursor pagination over (purchasedAt desc, _id desc) plus an optional date
 // window. Two things are load-bearing here:
 //   - `cursor` must be a declared key, or tRPC's infiniteQueryOptions helper
@@ -52,9 +57,7 @@ const purchaseEditInput = purchaseInput
 //     injects a `direction` field into every infinite-query request, which a
 //     plain object strips and `.strict()` would reject with a 400.
 // No maximum on `limit` — the page plus "Load more" is the bound.
-const purchaseListInput = z.object({
-  from: z.string().datetime().optional(),
-  to: z.string().datetime().optional(),
+const purchaseListInput = purchaseDateRangeInput.extend({
   limit: z.number().int().positive().default(DEFAULT_PURCHASE_PAGE_SIZE),
   cursor: z.string().nullish(),
 });
@@ -64,6 +67,12 @@ export const purchasesRouter = router({
     .input(purchaseListInput)
     .query(({ ctx, input }) =>
       ctx.services.purchaseService.list(ctx.auth.orgId, input),
+    ),
+
+  summary: orgProtectedProcedure
+    .input(purchaseDateRangeInput)
+    .query(({ ctx, input }) =>
+      ctx.services.purchaseService.summary(ctx.auth.orgId, input),
     ),
 
   get: orgProtectedProcedure

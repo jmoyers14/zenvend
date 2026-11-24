@@ -1,9 +1,11 @@
 import type { CostBasisLine, ReplacementCostLine } from "@zenvend/domain";
 import type {
   Purchase,
+  PurchaseDateRange,
   PurchaseInput,
   PurchaseListQuery,
   PurchasePage,
+  PurchaseSummary,
   PurchaseUpdate,
 } from "./types.ts";
 
@@ -20,6 +22,8 @@ export interface PurchaseRepository {
    * only list in the app that grows without limit.
    */
   findPageByOrg(orgId: string, query: PurchaseListQuery): Promise<PurchasePage>;
+  /** Spend and count over every purchase findPageByOrg would page through. */
+  findSummaryByOrg(orgId: string, range: PurchaseDateRange): Promise<PurchaseSummary>;
   findById(orgId: string, id: string): Promise<Purchase | null>;
   /**
    * Every line of every live purchase in the org, flattened — the P&L engine's

@@ -48,11 +48,15 @@ export interface PurchaseCursor {
   id: string;
 }
 
-export interface PurchaseListQuery {
+/** A window on purchasedAt. */
+export interface PurchaseDateRange {
   /** Inclusive lower bound on purchasedAt, as an ISO instant. */
   from?: string | null;
   /** Inclusive upper bound on purchasedAt, as an ISO instant. */
   to?: string | null;
+}
+
+export interface PurchaseListQuery extends PurchaseDateRange {
   /** Rows to return. The repository reads one more to learn if more exist. */
   limit: number;
   /** Start STRICTLY AFTER this position in (purchasedAt desc, _id desc). */
@@ -63,4 +67,11 @@ export interface PurchasePage {
   items: Purchase[];
   /** At least one more row exists after `items`. */
   hasMore: boolean;
+}
+
+/** What every live purchase in a date range adds up to. */
+export interface PurchaseSummary {
+  /** Sum of every line's totalCostCents — the same figure each row shows. */
+  spentCents: number;
+  count: number;
 }

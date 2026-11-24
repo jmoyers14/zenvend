@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import type { ApiPurchase } from "../../apiTypes.ts";
@@ -33,7 +33,7 @@ import {
   presetRange,
   startOfLocalDayIso,
 } from "./dateRange.ts";
-import { isReceiptMismatch, linesTotalCentsFor, spentCentsFor } from "./purchaseTotals.ts";
+import { isReceiptMismatch, linesTotalCentsFor } from "./purchaseTotals.ts";
 
 const PRESETS: ChipOption<PresetId>[] = [
   { value: "month", label: "This month" },
@@ -65,9 +65,10 @@ export function PurchasesScreen() {
     };
   }, [preset, customFrom, customTo]);
 
+  const rangeInput = { from: range.from ?? undefined, to: range.to ?? undefined };
   const purchases = useInfiniteQuery(
     trpc.purchases.list.infiniteQueryOptions(
-      { from: range.from ?? undefined, to: range.to ?? undefined },
+      rangeInput,
       {
         // Explicit so the first page's param is a value rather than undefined.
         initialCursor: null,
@@ -76,6 +77,7 @@ export function PurchasesScreen() {
       },
     ),
   );
+  const summary = useQuery(trpc.purchases.summary.queryOptions(rangeInput));
 
   // Changing the range changes the query key — tRPC strips cursor/direction
   // before keying — so a new filter is a new infinite query that starts at
@@ -137,14 +139,14 @@ export function PurchasesScreen() {
         ) : null}
       </Card>
 
-      <ErrorNote message={purchases.error?.message ?? null} />
+      <ErrorNote message={purchases.error?.message ?? summary.error?.message ?? null} />
 
       {purchases.isLoading ? <p className="text-body text-muted-strong">Loading…</p> : null}
 
       {purchases.isSuccess ? (
         <>
-          {rows.length > 0 ? (
-            <SpendSummary purchases={rows} hasMore={purchases.hasNextPage} />
+          {summary.data && summary.data.count > 0 ? (
+            <SpendSummary spentCents={summary.data.spentCents} count={summary.data.count} />
           ) : null}
 
           <RowTable columns={PURCHASE_COLUMNS} className="rounded-panel bg-card shadow-card">
@@ -180,28 +182,14 @@ export function PurchasesScreen() {
   );
 }
 
-/**
- * What the listed purchases add up to. The list arrives a page at a time, so
- * while more pages remain the figure covers only the ones loaded, and says so.
- */
-function SpendSummary({
-  purchases,
-  hasMore,
-}: {
-  purchases: readonly ApiPurchase[];
-  hasMore: boolean;
-}) {
-  const countLabel = plural(purchases.length, { one: "purchase", many: "purchases" });
+/** What every purchase in the range adds up to, summed by the server. */
+function SpendSummary({ spentCents, count }: { spentCents: number; count: number }) {
   return (
     <section aria-label="Spent" className="grid gap-1">
       <p className="text-overline text-muted-strong uppercase">Spent</p>
-      <p className="font-display text-stat text-ink tabular-nums">
-        {formatCents(spentCentsFor(purchases))}
-      </p>
+      <p className="font-display text-stat text-ink tabular-nums">{formatCents(spentCents)}</p>
       <p className="text-body-sm text-muted-strong">
-        {hasMore
-          ? `Across the first ${countLabel} only. Load more below to include the rest.`
-          : `Across ${countLabel}.`}
+        Across {plural(count, { one: "purchase", many: "purchases" })}.
       </p>
     </section>
   );

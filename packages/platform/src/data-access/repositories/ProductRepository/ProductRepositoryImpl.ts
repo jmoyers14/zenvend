@@ -1,7 +1,7 @@
 import { injectable } from "tsyringe";
 import type { Types } from "mongoose";
 import { ProductModel } from "../../models/Product.ts";
-import { toId } from "../ids.ts";
+import { toId } from "../../utils/ids.ts";
 import type {
   Product,
   ProductInput,

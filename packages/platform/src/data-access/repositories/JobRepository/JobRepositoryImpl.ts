@@ -1,7 +1,7 @@
 import { injectable } from "tsyringe";
 import type { Types } from "mongoose";
 import { JobModel } from "../../models/Job.ts";
-import { toId } from "../ids.ts";
+import { toId } from "../../utils/ids.ts";
 import type {
   Job,
   JobInput,

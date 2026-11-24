@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isReceiptMismatch, linesTotalCentsFor, spentCentsFor } from "./purchaseTotals.ts";
+import { isReceiptMismatch, linesTotalCentsFor } from "./purchaseTotals.ts";
 
 const purchase = (lineCents: number[], receiptTotalCents: number | null = null) => ({
   lines: lineCents.map((totalCostCents) => ({ totalCostCents })),
@@ -22,8 +22,4 @@ describe("isReceiptMismatch", () => {
   test("is true when they don't", () => {
     expect(isReceiptMismatch(purchase([1299], 1800))).toBe(true);
   });
-});
-
-test("spentCentsFor sums every purchase", () => {
-  expect(spentCentsFor([purchase([1000, 250]), purchase([599])])).toBe(1849);
 });
