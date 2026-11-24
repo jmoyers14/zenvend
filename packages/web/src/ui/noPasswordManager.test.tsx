@@ -14,29 +14,24 @@ const OPT_OUT_ATTRIBUTES = [
   'data-protonpass-ignore="true"',
 ];
 
-const controls: [string, ReactElement][] = [
-  ["TextInput", <TextInput key="text" />],
-  ["TextArea", <TextArea key="area" />],
-  ["NumberInput", <NumberInput key="number" />],
-  ["DecimalInput", <DecimalInput key="decimal" />],
-  ["MoneyInput", <MoneyInput key="money" />],
-  [
-    "SearchInput",
-    <SearchInput key="search" value="" onChange={() => {}} placeholder="Find" />,
-  ],
-  [
-    "MachineMap search",
+const controls: Record<string, ReactElement> = {
+  TextInput: <TextInput />,
+  TextArea: <TextArea />,
+  NumberInput: <NumberInput />,
+  DecimalInput: <DecimalInput />,
+  MoneyInput: <MoneyInput />,
+  SearchInput: <SearchInput value="" onChange={() => {}} placeholder="Find" />,
+  "MachineMap search": (
     <MachineMap
-      key="map"
       shelves={[["A1"]]}
       tileFor={() => ({ label: "A1", value: 3 })}
       search={{ label: "Find a slot", placeholder: "A1" }}
-    />,
-  ],
-];
+    />
+  ),
+};
 
 describe("shared text controls", () => {
-  test.each(controls)("%s opts out of every password manager", (_, control) => {
+  test.each(Object.entries(controls))("%s opts out of every password manager", (_, control) => {
     const markup = renderToStaticMarkup(control);
 
     for (const attribute of OPT_OUT_ATTRIBUTES) {
