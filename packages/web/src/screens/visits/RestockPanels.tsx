@@ -5,11 +5,11 @@ import {
   Field,
   insetFocusRing,
   NumberInput,
+  type ProductOption,
   TextInput,
 } from "../../ui.tsx";
 import { onEnterKey } from "../../utils/keyboard.ts";
 import { rankByName } from "../../utils/textMatch.ts";
-import type { ProductOption } from "../machines/ProductCombobox.tsx";
 import {
   type Arrival,
   arrivalsIn,

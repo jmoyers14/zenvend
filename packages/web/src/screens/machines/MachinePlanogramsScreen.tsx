@@ -20,6 +20,8 @@ import {
   NumberInput,
   Page,
   PageHeader,
+  ProductCombobox,
+  type ProductOption,
   RowTable,
   RowTableBody,
   RowTableCellLabel,
@@ -32,7 +34,6 @@ import { centsToInput, parseDollarsToCents } from "../../utils/money.ts";
 import { useProductName } from "../products/useProductName.ts";
 import { EditorCard, EditorFooter, SlotEditorHeader } from "../visits/SlotEditor.tsx";
 import { MachineMetaLine, useLocationName } from "./machineMeta.tsx";
-import { ProductCombobox, type ProductOption } from "./ProductCombobox.tsx";
 import {
   buildEditorSlots,
   buildPlanogramSlots,

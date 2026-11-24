@@ -43,6 +43,8 @@ export {
   PageHeader,
   pageLinkClass,
 } from "./ui/PageHeader.tsx";
+export { ProductCombobox } from "./ui/ProductCombobox.tsx";
+export type { ProductOption } from "./ui/productCombobox.ts";
 export { ProgressBar } from "./ui/ProgressBar.tsx";
 export type { RowTableVariant } from "./ui/RowTable.tsx";
 export {

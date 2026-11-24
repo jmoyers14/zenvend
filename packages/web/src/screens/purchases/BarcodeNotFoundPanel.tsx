@@ -12,7 +12,7 @@ import {
   IconButton,
   InfoHint,
   insetFocusRing,
-  Select,
+  ProductCombobox,
   TextInput,
 } from "../../ui.tsx";
 import { parseDollarsToCents } from "../../utils/money.ts";
@@ -478,18 +478,16 @@ export function BarcodeNotFoundPanel({
                   // index is the only stable key available.
                   <div key={index} className="grid grid-cols-[minmax(0,1fr)] gap-2">
                     <div className="grid grid-cols-[minmax(0,1fr)_5rem_2.25rem] items-center gap-2">
-                      <Select
+                      <ProductCombobox
                         aria-label="Product"
-                        value={row.productId}
-                        onChange={(e) => setContent(index, { productId: e.target.value })}
-                      >
-                        <option value={NEW_PRODUCT}>➕ New product…</option>
-                        {products.map((product) => (
-                          <option key={product.id} value={product.id}>
-                            {product.name}
-                          </option>
-                        ))}
-                      </Select>
+                        products={products}
+                        productId={row.productId}
+                        onPick={(product) => setContent(index, { productId: product.id })}
+                        newProduct={{
+                          isSelected: row.productId === NEW_PRODUCT,
+                          onPick: () => setContent(index, { productId: NEW_PRODUCT }),
+                        }}
+                      />
                       <TextInput
                         aria-label="Units"
                         placeholder="Units"
@@ -506,9 +504,10 @@ export function BarcodeNotFoundPanel({
                       </IconButton>
                     </div>
                     {row.productId === NEW_PRODUCT ? (
-                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_8rem_11rem] sm:pr-[2.75rem]">
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem] sm:pr-[2.75rem]">
                         <TextInput
                           aria-label="New product name"
+                          className="sm:col-span-2"
                           placeholder="Name, e.g. Doritos Nacho Cheese"
                           value={row.name}
                           onChange={(e) => setContent(index, { name: e.target.value })}
@@ -542,8 +541,8 @@ export function BarcodeNotFoundPanel({
               </fieldset>
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem_10rem]">
-              <Field label="Name">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Name" className="sm:col-span-2">
                 <TextInput
                   placeholder="e.g. Coca-Cola Zero 12 oz can"
                   value={name}
