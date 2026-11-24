@@ -1,4 +1,3 @@
-import { slotProductKey } from "@zenvend/domain";
 import { useMemo, useState } from "react";
 import {
   Button,
@@ -17,6 +16,7 @@ import {
   type LinkedSource,
   type PullReason,
   type Restock,
+  recordedActionFor,
   restockWithAction,
   restockWithArrivalChange,
   restockWithNewStock,
@@ -71,9 +71,9 @@ export function AddStockPanel({
   const [bestBy, setBestBy] = useState(item.kind === "arrival" ? item.arrival.bestBy : "");
 
   const name = nameOf(item.productId);
-  const isMovedIn = item.kind === "arrival" && item.movedUnits !== null;
+  const isMovedIn = item.kind === "arrival" && item.moved !== null;
   const wentInCount = parseCount(wentIn);
-  const nowCount = wentInCount === null ? null : entry.baseUnits + wentInCount;
+  const nowCount = wentInCount === null ? null : entry.baseCount + wentInCount;
   const tracksExpiration = item.kind === "arrival" && item.arrival.tracksExpiration;
 
   const handleDone = () => {
@@ -95,9 +95,8 @@ export function AddStockPanel({
     if (item.kind !== "arrival") {
       return;
     }
-    const withDraft = restockWithArrivalChange(restock, item.arrival, { added: wentIn, bestBy });
     const arrival = { ...item.arrival, added: wentIn, bestBy };
-    onRestockChange(restockWithSourceLinked(withDraft, { arrival, source }));
+    onRestockChange(restockWithSourceLinked(restock, { arrival, source }));
     onDone();
   };
 
@@ -418,7 +417,7 @@ export function AddProductPanel({
     if (!arrival) {
       return;
     }
-    setLinkedSource({ row: source, action: restock.actions[slotProductKey(source)] });
+    setLinkedSource({ row: source, action: recordedActionFor(restock, source) });
     onRestockChange(restockWithSourceLinked(restock, { arrival, source }));
   };
 

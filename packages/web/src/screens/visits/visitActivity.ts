@@ -1,7 +1,7 @@
 import { type RemovalReason, slotProductKey } from "@zenvend/domain";
 import { answeredActionFor, type Arrival, arrivalsIn, type Restock } from "./restock.ts";
 import { hasRestockQuestions, isSlotAnswered, nowLevelFor } from "./restockSlots.ts";
-import { isCounted, parseCount, rowsInSlot, type VisitRow } from "./visitRows.ts";
+import { isCounted, parseCount, partialPullOf, rowsInSlot, type VisitRow } from "./visitRows.ts";
 
 /**
  * What happened to each product this visit, as the map tiles, the slot
@@ -48,14 +48,6 @@ export interface ProductActivity {
   /** For display: what happened, in words. */
   notes: string[];
 }
-
-const partialPullOf = (row: VisitRow): ProductActivity["partialPull"] => {
-  const count = parseCount(row.removed);
-  if (count === null || count === 0 || row.removedReason === null) {
-    return null;
-  }
-  return { count, reason: row.removedReason };
-};
 
 const partialPullNote = ({ count, reason }: { count: number; reason: RemovalReason }) =>
   `Pulled ${count} · ${REMOVAL_LABELS[reason]}`;

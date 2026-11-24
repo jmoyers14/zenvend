@@ -3,29 +3,30 @@ import type { KeyboardEvent } from "react";
 import { Button } from "./Button.tsx";
 import { insetFocusRing } from "./focus.ts";
 
-export interface ActionMenuItem {
-  value: string;
+export interface ActionMenuItem<Value extends string = string> {
+  value: Value;
   label: string;
 }
 
-interface ActionMenuProps {
+interface ActionMenuProps<Value extends string> {
   /** Accessible name for the trigger, e.g. "Actions for Coke". */
   label: string;
-  items: ActionMenuItem[];
+  items: ActionMenuItem<Value>[];
   isDisabled?: boolean;
   disabledText?: string;
-  onSelect: (value: string) => void;
+  onSelect: (value: Value) => void;
 }
 
-export function ActionMenu({
+export const ActionMenu = <Value extends string>({
   label,
   items,
   isDisabled = false,
   disabledText = "Editing",
   onSelect,
-}: ActionMenuProps) {
+}: ActionMenuProps<Value>) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
@@ -44,8 +45,7 @@ export function ActionMenu({
 
   const closeAndRestoreFocus = () => {
     setIsOpen(false);
-    // Button does not forward refs, so reach the trigger through the container.
-    containerRef.current?.querySelector<HTMLButtonElement>("[aria-haspopup]")?.focus();
+    triggerRef.current?.focus();
   };
 
   const handleMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -72,7 +72,7 @@ export function ActionMenu({
     itemRefs.current[nextIndex]?.focus();
   };
 
-  const handleSelect = (value: string) => {
+  const handleSelect = (value: Value) => {
     closeAndRestoreFocus();
     onSelect(value);
   };
@@ -84,6 +84,7 @@ export function ActionMenu({
   return (
     <div ref={containerRef} className="relative inline-block" onKeyDown={handleMenuKeyDown}>
       <Button
+        ref={triggerRef}
         variant="secondary"
         size="sm"
         aria-label={label}
@@ -117,4 +118,4 @@ export function ActionMenu({
       ) : null}
     </div>
   );
-}
+};

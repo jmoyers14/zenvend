@@ -94,11 +94,18 @@ export const parseCount = (text: string): number | null => {
 };
 
 /** A whole-count pull with a reason, i.e. part of the shelf taken out while
- *  the product stays. */
-export const hasPartialPull = (row: VisitRow): boolean => {
-  const removedCount = parseCount(row.removed);
-  return removedCount !== null && removedCount >= 1 && row.removedReason !== null;
+ *  the product stays. Null when there is none. */
+export const partialPullOf = (
+  row: VisitRow,
+): { count: number; reason: RemovalReason } | null => {
+  const count = parseCount(row.removed);
+  if (count === null || count === 0 || row.removedReason === null) {
+    return null;
+  }
+  return { count, reason: row.removedReason };
 };
+
+export const hasPartialPull = (row: VisitRow): boolean => partialPullOf(row) !== null;
 
 /** Rejects an ISO instant and a non-padded date — both break the ordering. */
 export const CALENDAR_DATE = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;

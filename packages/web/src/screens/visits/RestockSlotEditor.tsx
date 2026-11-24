@@ -123,16 +123,17 @@ export function RestockSlotEditor({
       ? []
       : rowsInSlot(rows, pick.partnerSlotCode).filter(isCounted);
 
-  const panelKey = panel !== null && "key" in panel ? panel.key : null;
-  const panelItem = contents.items.find((item) => item.key === panelKey);
+  const panelItem =
+    panel !== null && "key" in panel
+      ? contents.items.find((item) => item.key === panel.key)
+      : undefined;
   // A keyed panel whose row has gone (its arrival undone) renders nothing, so
   // it counts as closed.
   const isAddStockOpen = panel?.kind === "add-stock" && panelItem !== undefined;
   const isPullOpen = panel?.kind === "pull" && panelItem?.kind === "counted";
-  const isPanelOpen =
-    isAddStockOpen || isPullOpen || panel?.kind === "add-product" || isPicking;
-  const openPanelKey = isAddStockOpen || isPullOpen ? panelKey : null;
-  const editingKey = isPicking && pick ? slotProductKey(pick.row) : openPanelKey;
+  const openItem = isAddStockOpen || isPullOpen ? panelItem : undefined;
+  const isPanelOpen = openItem !== undefined || panel?.kind === "add-product" || isPicking;
+  const editingKey = isPicking && pick ? slotProductKey(pick.row) : (openItem?.key ?? null);
   const hasUnansweredCounted = contents.items.some(
     (item) => item.kind === "counted" && !item.isAnswered,
   );
@@ -141,7 +142,7 @@ export function RestockSlotEditor({
   const handleUndoDeparture = (departure: Departure) => {
     const next = restockWithAction(restock, departure.row, null);
     const nextItems = slotContentsFor({ ...slot, restock: next }).items;
-    if (panelKey !== null && !nextItems.some((item) => item.key === panelKey)) {
+    if (openItem && !nextItems.some((item) => item.key === openItem.key)) {
       closePanel();
     }
     onRestockChange(next);
@@ -164,11 +165,8 @@ export function RestockSlotEditor({
         onRestockChange(restockWithoutNewStock(restock, arrival));
         return;
       }
-      const sourceRow = rows.find(
-        (row) => row.slotCode === arrival.fromSlotCode && row.productId === arrival.productId,
-      );
-      if (action === "undo-move" && sourceRow) {
-        onRestockChange(restockWithAction(restock, sourceRow, null));
+      if (action === "undo-move" && item.source) {
+        onRestockChange(restockWithAction(restock, item.source, null));
       }
       return;
     }

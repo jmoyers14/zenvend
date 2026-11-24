@@ -102,7 +102,7 @@ describe("slotContentsFor", () => {
     expect(destination.items.at(-1)).toMatchObject({
       kind: "arrival",
       productId: "coke",
-      movedUnits: 4,
+      moved: 4,
       count: 4,
       isSwap: false,
       isAnswered: true,
@@ -379,7 +379,7 @@ describe("addStockEntryFor", () => {
     const restock = restockWithAction(start, item.row, { kind: "added", added: "3" });
 
     expect(addStockEntryFor(item, restock)).toEqual({
-      baseUnits: 4,
+      baseCount: 4,
       isOnTopOfMove: false,
       wentIn: "3",
     });
@@ -390,7 +390,7 @@ describe("addStockEntryFor", () => {
 
     const entry = addStockEntryFor(item, restock);
 
-    expect(entry).toEqual({ baseUnits: 4, isOnTopOfMove: true, wentIn: "2" });
+    expect(entry).toEqual({ baseCount: 4, isOnTopOfMove: true, wentIn: "2" });
     expect(arrivalAddedFor(entry, "5")).toBe("9");
   });
 
@@ -399,7 +399,7 @@ describe("addStockEntryFor", () => {
 
     const entry = addStockEntryFor(item, restock);
 
-    expect(entry).toEqual({ baseUnits: 0, isOnTopOfMove: false, wentIn: "2" });
+    expect(entry).toEqual({ baseCount: 0, isOnTopOfMove: false, wentIn: "2" });
     expect(arrivalAddedFor(entry, "3")).toBe("3");
   });
 
@@ -407,7 +407,7 @@ describe("addStockEntryFor", () => {
     const { item, restock } = arrivalWith("");
 
     expect(addStockEntryFor(item, restock)).toEqual({
-      baseUnits: 0,
+      baseCount: 0,
       isOnTopOfMove: false,
       wentIn: "",
     });
@@ -427,7 +427,7 @@ describe("addStockEntryFor", () => {
     const item = slotContentsFor({ rows, restock, slotCode: "A3" }).items[0] as SlotItem;
 
     expect(addStockEntryFor(item, restock)).toEqual({
-      baseUnits: 0,
+      baseCount: 0,
       isOnTopOfMove: false,
       wentIn: "7",
     });

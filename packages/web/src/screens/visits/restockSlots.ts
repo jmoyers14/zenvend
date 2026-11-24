@@ -1,5 +1,4 @@
-import { slotProductKey } from "@zenvend/domain";
-import { answeredActionFor, arrivalsIn, type Restock } from "./restock.ts";
+import { answeredActionFor, arrivalsIn, type Restock, recordedActionFor } from "./restock.ts";
 import {
   isCounted,
   leftAfterPull,
@@ -24,7 +23,7 @@ const rowsOf = ({ rows, slotCode }: RestockSlot): VisitRow[] =>
   rowsInSlot(rows, slotCode);
 
 const isStaying = (row: VisitRow, restock: Restock): boolean => {
-  const action = restock.actions[slotProductKey(row)];
+  const action = recordedActionFor(restock, row);
   return action === undefined || action.kind === "added";
 };
 

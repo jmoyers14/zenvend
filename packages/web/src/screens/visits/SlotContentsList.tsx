@@ -8,7 +8,6 @@ import {
   slotContentLabelFor,
   type SlotItem,
 } from "./slotContents.ts";
-import { hasPartialPull } from "./visitRows.ts";
 
 const ROW_ACTION_LABELS: Record<RowAction, string> = {
   "add-stock": "Add stock",
@@ -21,16 +20,6 @@ const ROW_ACTION_LABELS: Record<RowAction, string> = {
   remove: "Remove",
 };
 
-const ordinalFor = (place: number): string => {
-  if (place === 2) {
-    return "2nd";
-  }
-  if (place === 3) {
-    return "3rd";
-  }
-  return `${place}th`;
-};
-
 /** Front, 2nd, …, Back; blank when the slot holds one product. */
 const positionLabelFor = (index: number, itemCount: number): string => {
   if (itemCount < 2) {
@@ -39,7 +28,13 @@ const positionLabelFor = (index: number, itemCount: number): string => {
   if (index === 0) {
     return "Front";
   }
-  return index === itemCount - 1 ? "Back" : ordinalFor(index + 1);
+  if (index === itemCount - 1) {
+    return "Back";
+  }
+  if (index === 1) {
+    return "2nd";
+  }
+  return index === 2 ? "3rd" : `${index + 1}th`;
 };
 
 /** The slot as it stands once Restock is done: one row per product, front to
@@ -133,20 +128,9 @@ function SlotContentsRow({
 }) {
   const name = nameOf(item.productId);
   const actions = rowActionsFor(item);
-  const isMoveHidden = item.kind === "counted" && hasPartialPull(item.row);
-  const tone = (() => {
-    if (isEditing) {
-      return "bg-action-soft ring-2 ring-action";
-    }
-    return item.isAnswered ? "bg-success-soft" : "bg-app";
-  })();
-
-  const handleSelect = (value: string) => {
-    const action = actions.find((candidate) => candidate === value);
-    if (action) {
-      onAction(item, action);
-    }
-  };
+  const isMoveHidden = item.kind === "counted" && !actions.includes("move");
+  const answeredTone = item.isAnswered ? "bg-success-soft" : "bg-app";
+  const tone = isEditing ? "bg-action-soft ring-2 ring-action" : answeredTone;
 
   return (
     <li
@@ -174,7 +158,7 @@ function SlotContentsRow({
           label={`Actions for ${name}`}
           items={actions.map((action) => ({ value: action, label: ROW_ACTION_LABELS[action] }))}
           isDisabled={isEditing}
-          onSelect={handleSelect}
+          onSelect={(action) => onAction(item, action)}
         />
       </div>
     </li>
