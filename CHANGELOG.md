@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.17.0](https://github.com/jmoyers14/zenvend/compare/v0.16.0...v0.17.0) (2026-11-24)
+
+
+### Features
+
+* **ios:** upload Release builds to TestFlight ([#77](https://github.com/jmoyers14/zenvend/issues/77)) ([92a1df9](https://github.com/jmoyers14/zenvend/commit/92a1df94f2ef11c566f8b29b78964cbb7a74dfdf))
+* show the exact spend total for the purchases date range ([#82](https://github.com/jmoyers14/zenvend/issues/82)) ([809736b](https://github.com/jmoyers14/zenvend/commit/809736baa9737bcb8d77f0058c6970349c8dbac4))
+* **web:** ask how many before why on a pull, and bullet slot tooltips ([#85](https://github.com/jmoyers14/zenvend/issues/85)) ([b05c64b](https://github.com/jmoyers14/zenvend/commit/b05c64b661d4bff074b24efe10498dbb2f92b9c7))
+* **web:** searchable product picker and full-width name in the new-case form ([#83](https://github.com/jmoyers14/zenvend/issues/83)) ([9e07ba7](https://github.com/jmoyers14/zenvend/commit/9e07ba7a1c7b4ddccf598d420419c8430fc0d3a7))
+* **web:** show the restock slot as one row per product ([#81](https://github.com/jmoyers14/zenvend/issues/81)) ([24bb854](https://github.com/jmoyers14/zenvend/commit/24bb8547c4234daa2fac32d30d0a0d4e9dd35d4a))
+
+
+### Bug Fixes
+
+* **ci:** make the testflight workflow parse ([#79](https://github.com/jmoyers14/zenvend/issues/79)) ([865fc5a](https://github.com/jmoyers14/zenvend/commit/865fc5a42a8d5e4bf2fc18890f68f5b339bacc5b))
+* **ios:** skip plugin trust prompts when archiving for TestFlight ([#80](https://github.com/jmoyers14/zenvend/issues/80)) ([6b63be8](https://github.com/jmoyers14/zenvend/commit/6b63be8a9249ce46d000941ba4bf5455acbcc423))
+* **web:** stop password managers flagging every input ([#84](https://github.com/jmoyers14/zenvend/issues/84)) ([13b6b21](https://github.com/jmoyers14/zenvend/commit/13b6b216674f73120a834c00eedc9f7298bdee28))
+
 ## [0.16.0](https://github.com/jmoyers14/zenvend/compare/v0.15.0...v0.16.0) (2026-11-15)
 
 
