@@ -1,10 +1,16 @@
 import { slotProductKey } from "@zenvend/domain";
 import { useState } from "react";
-import { Alert, Button, ChipGroup, IconButton, MoneyInput } from "../../ui.tsx";
+import {
+  Alert,
+  Button,
+  ChipGroup,
+  IconButton,
+  MoneyInput,
+  type ProductOption,
+} from "../../ui.tsx";
 import { onEnterKey } from "../../utils/keyboard.ts";
 import { formatCents, parseDollarsToCents } from "../../utils/money.ts";
 import { plural } from "../../utils/text.ts";
-import type { ProductOption } from "../machines/ProductCombobox.tsx";
 import {
   type Restock,
   restockWithAction,
