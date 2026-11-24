@@ -9,7 +9,6 @@ import {
   restockWithSwap,
 } from "./restock.ts";
 import {
-  describeSlotAnswers,
   hasActivity,
   restockTileValueFor,
   slotActivityFor,
@@ -273,53 +272,6 @@ describe("restockTileValueFor", () => {
     const rows = buildRows();
 
     expect(tileOf(rows, restockFor(rows), "A3")).toBe("");
-  });
-});
-
-describe("describeSlotAnswers", () => {
-  it("one product: just what happened", () => {
-    const rows = buildRows({ coke: { removed: "2", removedReason: "expired" } });
-    const restock = restockWithAction(restockFor(rows), rowOf(rows, "coke"), {
-      kind: "added",
-      added: "4",
-    });
-
-    expect(describeSlotAnswers({ rows, restock, slotCode: "A1", nameOf })).toEqual([
-      "Pulled 2 · expired, Added 4",
-    ]);
-  });
-
-  it("two products: each one named, unanswered ones left out", () => {
-    const rows = buildRows();
-    const restock = restockWithAction(restockFor(rows), rowOf(rows, "doritos"), {
-      kind: "added",
-      added: "0",
-    });
-
-    expect(describeSlotAnswers({ rows, restock, slotCode: "A2", nameOf })).toEqual([
-      "Doritos: Nothing added",
-    ]);
-  });
-
-  it("a pull with no other answer shows as Nothing added", () => {
-    const rows = buildRows({ coke: { removed: "1", removedReason: "damaged" } });
-
-    expect(
-      describeSlotAnswers({ rows, restock: restockFor(rows), slotCode: "A1", nameOf }),
-    ).toEqual(["Pulled 1 · damaged, Nothing added"]);
-  });
-
-  it("new stock says where it came from and how many went in", () => {
-    const rows = buildRows();
-    const restock = restockWithArrivalChange(
-      restockWithNewStock(restockFor(rows), { slotCode: "A3", productId: "coke", tracksExpiration: false }),
-      { slotCode: "A3", productId: "coke" },
-      { added: "8" },
-    );
-
-    expect(describeSlotAnswers({ rows, restock, slotCode: "A3", nameOf })).toEqual([
-      "New in this slot, Added 8",
-    ]);
   });
 });
 

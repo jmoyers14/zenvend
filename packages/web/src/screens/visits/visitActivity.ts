@@ -311,29 +311,3 @@ const describeActivity = (activity: ProductActivity): string | null => {
       return [activity.notes[0], addedText(activity.added)].filter(Boolean).join(", ");
   }
 };
-
-/**
- * The answers recorded in one slot, in words, for the summary row with Undo.
- * Products are named only when the slot holds more than one.
- */
-export const describeSlotAnswers = ({
-  rows,
-  restock,
-  slotCode,
-  nameOf,
-}: {
-  rows: readonly VisitRow[];
-  restock: Restock;
-  slotCode: string;
-  nameOf: (productId: string) => string;
-}): string[] => {
-  const activities = slotActivityFor({ rows, restock, slotCode });
-  const isNamed = activities.length > 1;
-  return activities.flatMap((activity) => {
-    const text = describeActivity(activity);
-    if (text === null) {
-      return [];
-    }
-    return [isNamed ? `${nameOf(activity.productId)}: ${text}` : text];
-  });
-};

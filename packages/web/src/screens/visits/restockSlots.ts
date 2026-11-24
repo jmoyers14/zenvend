@@ -37,10 +37,6 @@ export const productIdsAfterRestock = (slot: RestockSlot): string[] => [
   ...arrivalsIn(slot.restock, slot.slotCode).map((arrival) => arrival.productId),
 ];
 
-/** Counted products still in the slot: the ones Add stock and Pull act on. */
-export const stayingRowsIn = (slot: RestockSlot): VisitRow[] =>
-  rowsOf(slot).filter((row) => isCounted(row) && isStaying(row, slot.restock));
-
 /**
  * Products the slot can't take as new stock: anything already in it or leaving
  * it. A product leaving can't come back as new stock, since that's one line for
@@ -142,31 +138,6 @@ export const restockProgressFor = ({
     answeredCount: slots.filter(isSlotAnswered).length,
     totalCount: slots.length,
   };
-};
-
-/**
- * The derived Now when the slot holds exactly one product after Restock: Left
- * − pulled + Added for a product that stayed, Added for an arrival, 0 for a
- * slot everything left. Null while anything it needs is blank or unparseable.
- */
-export const nowLevelAfterRestock = (slot: RestockSlot): number | null => {
-  const productIds = productIdsAfterRestock(slot);
-  if (productIds.length === 0) {
-    return rowsOf(slot).length > 0 && isSlotAnswered(slot) ? 0 : null;
-  }
-  if (productIds.length > 1) {
-    return null;
-  }
-  const [arrival] = arrivalsIn(slot.restock, slot.slotCode);
-  if (arrival) {
-    return parseCount(arrival.added);
-  }
-  const row = rowsOf(slot).find((candidate) => isStaying(candidate, slot.restock));
-  const action = row ? slot.restock.actions[slotProductKey(row)] : undefined;
-  if (!row || action?.kind !== "added") {
-    return null;
-  }
-  return nowLevelFor(row, action.added);
 };
 
 /** Left − pulled + Added for a product that stays, or null while either is
