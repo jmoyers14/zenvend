@@ -18,7 +18,6 @@ import {
   restockWithAction,
   restockWithArrivalChange,
   restockWithNewStock,
-  restockWithoutNewStock,
   restockWithSourceLinked,
   suggestedSourcesFor,
 } from "./restock.ts";
@@ -374,6 +373,9 @@ export function AddProductPanel({
 }) {
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<ProductOption | null>(null);
+  // Restock before the pick. Cancel restores it, so a "Came from X?" link also
+  // gives the source back its earlier answer.
+  const [restockBeforePick, setRestockBeforePick] = useState<Restock | null>(null);
   const [wentIn, setWentIn] = useState("");
   const [bestBy, setBestBy] = useState("");
   const alphabetical = useMemo(
@@ -399,6 +401,7 @@ export function AddProductPanel({
         tracksExpiration: tracksExpirationOf(product.id),
       }),
     );
+    setRestockBeforePick(restock);
     setPicked(product);
   };
 
@@ -410,20 +413,10 @@ export function AddProductPanel({
     onDone();
   };
 
-  // Cancel leaves nothing behind: the new stock, or the move it was linked to.
   const handleCancel = () => {
-    if (!arrival) {
-      onDone();
-      return;
+    if (restockBeforePick) {
+      onRestockChange(restockBeforePick);
     }
-    const source = rows.find(
-      (row) => row.slotCode === arrival.fromSlotCode && row.productId === arrival.productId,
-    );
-    onRestockChange(
-      source
-        ? restockWithAction(restock, source, null)
-        : restockWithoutNewStock(restock, arrival),
-    );
     onDone();
   };
 
