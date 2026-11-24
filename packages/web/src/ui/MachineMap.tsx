@@ -1,7 +1,7 @@
 import { type KeyboardEvent, type ReactNode, useId, useMemo, useState } from "react";
 import { focusRing } from "./focus.ts";
 import { isSlotMatch, shelfLabel } from "./machineMap.ts";
-import { controlClass, noPasswordManager } from "./TextInput.tsx";
+import { controlClass, passwordManagerOptOut } from "./TextInput.tsx";
 import type { StatusTone } from "./tone.ts";
 
 /**
@@ -218,7 +218,7 @@ export const MachineMap = ({
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={handleSearchKeyDown}
           autoComplete="off"
-          {...noPasswordManager}
+          {...passwordManagerOptOut}
           className={`${controlClass} h-11 px-4 text-button font-normal`}
         />
       ) : null}

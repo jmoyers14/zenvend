@@ -6,7 +6,7 @@ import { DecimalInput, MoneyInput, NumberInput } from "./NumberInput.tsx";
 import { SearchInput } from "./SearchInput.tsx";
 import { TextArea, TextInput } from "./TextInput.tsx";
 
-const OPT_OUT_ATTRIBUTES = [
+const optOutAttributes = [
   'data-1p-ignore="true"',
   'data-lpignore="true"',
   'data-bwignore="true"',
@@ -34,7 +34,7 @@ describe("shared text controls", () => {
   test.each(Object.entries(controls))("%s opts out of every password manager", (_, control) => {
     const markup = renderToStaticMarkup(control);
 
-    for (const attribute of OPT_OUT_ATTRIBUTES) {
+    for (const attribute of optOutAttributes) {
       expect(markup).toContain(attribute);
     }
   });

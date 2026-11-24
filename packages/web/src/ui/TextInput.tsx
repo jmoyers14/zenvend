@@ -11,7 +11,7 @@ export const controlClass = `w-full rounded-control border border-field bg-card 
 
 // Password managers ignore autocomplete="off"; each needs its own opt-out.
 // Sign-in is Clerk's, so no field of ours should ever be filled by one.
-export const noPasswordManager = {
+export const passwordManagerOptOut = {
   "data-1p-ignore": true, // 1Password
   "data-lpignore": "true", // LastPass
   "data-bwignore": true, // Bitwarden
@@ -44,7 +44,7 @@ export const TextInput = forwardRef<
     <input
       ref={ref}
       type={type}
-      {...noPasswordManager}
+      {...passwordManagerOptOut}
       {...rest}
       {...aria}
       className={`${controlClass} h-12 px-3.5 ${className}`}
@@ -80,7 +80,7 @@ export const TextArea = forwardRef<
     <textarea
       ref={ref}
       rows={rows}
-      {...noPasswordManager}
+      {...passwordManagerOptOut}
       {...rest}
       {...aria}
       className={`${controlClass} min-h-24 resize-y px-3.5 py-3 ${className}`}
