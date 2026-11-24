@@ -1,5 +1,5 @@
 import { type RemovalReason, slotProductKey } from "@zenvend/domain";
-import { type Arrival, arrivalsIn, type Restock } from "./restock.ts";
+import { answeredActionFor, type Arrival, arrivalsIn, type Restock } from "./restock.ts";
 import { hasRestockQuestions, isSlotAnswered, nowLevelFor } from "./restockSlots.ts";
 import { isCounted, parseCount, rowsInSlot, type VisitRow } from "./visitRows.ts";
 
@@ -88,7 +88,7 @@ const rowActivity = (row: VisitRow, restock: Restock): ProductActivity => {
     pulled: partialPull?.count ?? 0,
     notes: partialPull ? [partialPullNote(partialPull)] : [],
   };
-  const action = restock.actions[slotProductKey(row)];
+  const action = answeredActionFor(restock, row);
 
   if (action === undefined) {
     return { ...counted, outcome: "unanswered", notes: [...counted.notes, "No restock answer"] };

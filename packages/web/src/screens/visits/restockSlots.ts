@@ -1,5 +1,5 @@
 import { slotProductKey } from "@zenvend/domain";
-import { arrivalsIn, type Restock } from "./restock.ts";
+import { answeredActionFor, arrivalsIn, type Restock } from "./restock.ts";
 import {
   isCounted,
   leftAfterPull,
@@ -114,7 +114,7 @@ export const isSlotAnswered = (slot: RestockSlot): boolean => {
   const areRowsAnswered = rowsOf(slot)
     .filter(isCounted)
     .every((row) => {
-      const action = slot.restock.actions[slotProductKey(row)];
+      const action = answeredActionFor(slot.restock, row);
       if (action === undefined) {
         return false;
       }

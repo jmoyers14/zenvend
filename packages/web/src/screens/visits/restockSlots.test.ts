@@ -95,6 +95,15 @@ describe("isSlotAnswered", () => {
     expect(isSlotAnswered({ rows, restock: filled, slotCode: "A1" })).toBe(true);
   });
 
+  it("counts a partial pull with no other answer as answered", () => {
+    const rows = buildRows();
+    const coke = { ...rowFor(rows, "A1", "coke"), removed: "2", removedReason: "expired" as const };
+    const withPull = rows.map((row) => (row === rowFor(rows, "A1", "coke") ? coke : row));
+    const restock = buildRestock({ shelves: SHELVES, rows: withPull });
+
+    expect(isSlotAnswered({ rows: withPull, restock, slotCode: "A1" })).toBe(true);
+  });
+
   it("ignores an uncounted row, and a slot with nothing to answer is not answered", () => {
     const rows = buildRows({
       [slotProductKey({ slotCode: "A2", productId: "lays" })]: "",

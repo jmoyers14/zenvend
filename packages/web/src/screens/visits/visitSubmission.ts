@@ -8,7 +8,13 @@ import {
   slotsAfterChanges,
 } from "@zenvend/domain";
 import { formatCents, parseDollarsToCents } from "../../utils/money.ts";
-import type { Arrival, ProductAction, PullReason, Restock } from "./restock.ts";
+import {
+  type Arrival,
+  answeredActionFor,
+  type ProductAction,
+  type PullReason,
+  type Restock,
+} from "./restock.ts";
 import {
   CALENDAR_DATE,
   isCounted,
@@ -193,10 +199,9 @@ export const buildVisitSubmission = ({
 
   for (const row of rows) {
     const { slotCode, productId } = row;
-    const action = restock.actions[slotProductKey(row)];
 
     if (!isCounted(row)) {
-      if (action !== undefined) {
+      if (restock.actions[slotProductKey(row)] !== undefined) {
         problems.push({ kind: "answered-but-uncounted", slotCode, productId });
       }
       continue;
@@ -209,6 +214,7 @@ export const buildVisitSubmission = ({
     }
     const { count } = parsed;
 
+    const action = answeredActionFor(restock, row);
     if (action === undefined) {
       problems.push({ kind: "unanswered", slotCode, productId });
       continue;

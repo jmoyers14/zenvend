@@ -85,6 +85,15 @@ describe("slotActivityFor", () => {
     expect(coke).toMatchObject({ pulled: 2, now: 7, notes: ["Pulled 2 · expired"] });
   });
 
+  it("a partial pull with no restock action stays, adding nothing", () => {
+    const rows = buildRows({ coke: { removed: "2", removedReason: "expired" } });
+    const restock = restockFor(rows);
+
+    const [coke] = slotActivityFor({ rows, restock, slotCode: "A1" });
+
+    expect(coke).toMatchObject({ outcome: "stayed", added: 0, pulled: 2, now: 2 });
+  });
+
   it("a product taken out counts everything found as pulled", () => {
     const rows = buildRows();
     const restock = restockWithAction(restockFor(rows), rowOf(rows, "coke"), {
@@ -292,12 +301,12 @@ describe("describeSlotAnswers", () => {
     ]);
   });
 
-  it("a pull logged before the product's answer still shows", () => {
+  it("a pull with no other answer shows as Nothing added", () => {
     const rows = buildRows({ coke: { removed: "1", removedReason: "damaged" } });
 
     expect(
       describeSlotAnswers({ rows, restock: restockFor(rows), slotCode: "A1", nameOf }),
-    ).toEqual(["Pulled 1 · damaged"]);
+    ).toEqual(["Pulled 1 · damaged, Nothing added"]);
   });
 
   it("new stock says where it came from and how many went in", () => {

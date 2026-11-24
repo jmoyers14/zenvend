@@ -476,6 +476,28 @@ describe("buildVisitSubmission: other rules", () => {
     ]);
   });
 
+  it("a partial pull with no restock action is answered as Added 0", () => {
+    const rows = countRows({ [A1_CHEETOS]: "5" }).map((row) =>
+      row.slotCode === "A1" && row.productId === "cheetos"
+        ? { ...row, removed: "2", removedReason: "expired" as const }
+        : row,
+    );
+    const restock = buildRestock({ shelves: SHELVES, rows });
+
+    const submission = submissionOf({ rows, restock });
+
+    expect(submission.lines).toEqual([
+      line({
+        slotCode: "A1",
+        productId: "cheetos",
+        remaining: 5,
+        added: 0,
+        removed: 2,
+        removedReason: "expired",
+      }),
+    ]);
+  });
+
   it("collects problems of different kinds together", () => {
     const rows = countRows({ [A1_CHEETOS]: "4.5", [A2_FRITOS]: "7" });
     const restock = buildRestock({ shelves: SHELVES, rows });

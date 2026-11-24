@@ -1,6 +1,6 @@
 import { type SlotProduct, slotProductKey } from "@zenvend/domain";
 import { centsToInput } from "../../utils/money.ts";
-import { isCounted, type VisitRow } from "./visitRows.ts";
+import { hasPartialPull, isCounted, type VisitRow } from "./visitRows.ts";
 
 /**
  * The Restock step's state: what the operator did to each counted product,
@@ -336,6 +336,16 @@ export const suggestedSourcesFor = (
       action.reason === "destocked"
     );
   });
+
+/** The row's action. A partial pull with no action reads as Added 0, since
+ *  the pull is the answer and the rest of the shelf stays. */
+export const answeredActionFor = (restock: Restock, row: VisitRow): ProductAction | undefined => {
+  const action = restock.actions[slotProductKey(row)];
+  if (action !== undefined) {
+    return action;
+  }
+  return hasPartialPull(row) ? { kind: "added", added: "0" } : undefined;
+};
 
 export const arrivalsIn = (restock: Restock, slotCode: string): Arrival[] =>
   restock.arrivals.filter((arrival) => arrival.slotCode === slotCode);
