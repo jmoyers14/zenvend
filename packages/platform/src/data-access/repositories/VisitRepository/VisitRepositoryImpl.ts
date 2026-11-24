@@ -2,8 +2,8 @@ import { injectable } from "tsyringe";
 import type { Types } from "mongoose";
 import type { RemovalReason } from "@zenvend/domain";
 import { VisitModel } from "../../models/Visit.ts";
-import { toId } from "../ids.ts";
-import { instantBounds } from "../ranges.ts";
+import { toId } from "../../utils/ids.ts";
+import { instantBounds } from "../../utils/ranges.ts";
 import type {
   Visit,
   VisitInput,

@@ -1,7 +1,7 @@
 import { injectable } from "tsyringe";
 import type { Types } from "mongoose";
 import { WebhookEventModel } from "../../models/WebhookEvent.ts";
-import { toId } from "../ids.ts";
+import { toId } from "../../utils/ids.ts";
 import type {
   RecordedWebhookEvent,
   WebhookEvent,

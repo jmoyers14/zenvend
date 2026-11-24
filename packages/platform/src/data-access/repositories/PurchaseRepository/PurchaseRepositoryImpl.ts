@@ -2,8 +2,8 @@ import { injectable } from "tsyringe";
 import type { Types } from "mongoose";
 import type { CostBasisLine, ReplacementCostLine } from "@zenvend/domain";
 import { PurchaseModel } from "../../models/Purchase.ts";
-import { toId } from "../ids.ts";
-import { instantBounds } from "../ranges.ts";
+import { toId } from "../../utils/ids.ts";
+import { instantBounds } from "../../utils/ranges.ts";
 import type {
   Purchase,
   PurchaseDateRange,
