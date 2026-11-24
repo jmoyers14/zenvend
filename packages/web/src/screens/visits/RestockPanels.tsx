@@ -289,10 +289,6 @@ export function PullPanel({
 
   return (
     <EditorInset title={`${isEditing ? "Edit pull" : "Pull"} · ${name}`} onCancel={onDone}>
-      <div className="grid gap-2">
-        <span className="text-label text-ink">Why?</span>
-        <ChipGroup label="Why?" options={PULL_REASONS} value={reason} onChange={setReason} />
-      </div>
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-[160px]">
           <Field label="How many?">
@@ -326,12 +322,16 @@ export function PullPanel({
           />
         </div>
       ) : null}
+      <div className="grid gap-2">
+        <span className="text-label text-ink">Why?</span>
+        <ChipGroup label="Why?" options={PULL_REASONS} value={reason} onChange={setReason} />
+      </div>
       <div className="flex flex-wrap items-center gap-4">
         <Button onClick={handleDone} disabled={!canFinish}>
           Done
         </Button>
         {reason === null ? (
-          <span className="text-body-sm text-muted-strong">Pick a reason first</span>
+          <span className="text-body-sm text-muted-strong">Pick a reason</span>
         ) : null}
         {isEditing ? (
           <Button variant="text" onClick={handleUndoPull}>
