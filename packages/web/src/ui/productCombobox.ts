@@ -14,17 +14,20 @@ export type ComboboxEntry =
 // Wider than the purchase search's 8: here the list is the whole picker.
 const COMBOBOX_RESULT_LIMIT = 50;
 
-/**
- * The listbox rows for a search. An empty search lists every active product
- * A–Z. "New product" comes last so Enter still takes the best match.
- */
-export const buildComboboxEntries = (
-  products: ProductOption[],
-  { searchTerm, offersNewProduct }: { searchTerm: string; offersNewProduct: boolean },
-): ComboboxEntry[] => {
-  const activeProducts = products
+/** The products the combobox can offer, A–Z. Sorting is the costly step, so memoize this. */
+export const activeProductsByName = (products: ProductOption[]): ProductOption[] =>
+  products
     .filter((product) => product.active)
     .sort((a, b) => a.name.localeCompare(b.name));
+
+/**
+ * The listbox rows for a search over `activeProductsByName`. An empty search
+ * lists them all. "New product" comes last so Enter still takes the best match.
+ */
+export const buildComboboxEntries = (
+  activeProducts: ProductOption[],
+  { searchTerm, offersNewProduct }: { searchTerm: string; offersNewProduct: boolean },
+): ComboboxEntry[] => {
   const matches = searchTerm
     ? rankByName(activeProducts, searchTerm, COMBOBOX_RESULT_LIMIT)
     : activeProducts;

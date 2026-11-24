@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { buildComboboxEntries, type ProductOption } from "./productCombobox.ts";
+import {
+  activeProductsByName,
+  buildComboboxEntries,
+  type ProductOption,
+} from "./productCombobox.ts";
 
 const product = (name: string, { active = true } = {}): ProductOption => ({
   id: name.toLowerCase().replace(/\s+/g, "-"),
@@ -8,18 +12,28 @@ const product = (name: string, { active = true } = {}): ProductOption => ({
   active,
 });
 
-const PRODUCTS = [
+const PRODUCTS = activeProductsByName([
   product("Diet Coke"),
   product("Coke Zero"),
   product("Animal Crackers"),
   product("Old Cola", { active: false }),
-];
+]);
 
 const names = (entries: ReturnType<typeof buildComboboxEntries>) =>
   entries.map((entry) => (entry.kind === "product" ? entry.product.name : "+new"));
 
+describe("activeProductsByName", () => {
+  test("drops inactive products and sorts the rest A–Z", () => {
+    expect(PRODUCTS.map((p) => p.name)).toEqual([
+      "Animal Crackers",
+      "Coke Zero",
+      "Diet Coke",
+    ]);
+  });
+});
+
 describe("buildComboboxEntries", () => {
-  test("lists every active product A–Z for an empty search", () => {
+  test("lists every product for an empty search", () => {
     const entries = buildComboboxEntries(PRODUCTS, {
       searchTerm: "",
       offersNewProduct: false,
@@ -27,7 +41,7 @@ describe("buildComboboxEntries", () => {
     expect(names(entries)).toEqual(["Animal Crackers", "Coke Zero", "Diet Coke"]);
   });
 
-  test("ranks matches for a search and leaves out inactive products", () => {
+  test("ranks matches for a search", () => {
     const entries = buildComboboxEntries(PRODUCTS, {
       searchTerm: "co",
       offersNewProduct: false,

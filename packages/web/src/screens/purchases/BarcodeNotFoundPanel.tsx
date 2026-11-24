@@ -482,9 +482,11 @@ export function BarcodeNotFoundPanel({
                         aria-label="Product"
                         products={products}
                         productId={row.productId}
-                        isNewProductSelected={row.productId === NEW_PRODUCT}
                         onPick={(product) => setContent(index, { productId: product.id })}
-                        onPickNewProduct={() => setContent(index, { productId: NEW_PRODUCT })}
+                        newProduct={{
+                          isSelected: row.productId === NEW_PRODUCT,
+                          onPick: () => setContent(index, { productId: NEW_PRODUCT }),
+                        }}
                       />
                       <TextInput
                         aria-label="Units"
@@ -502,29 +504,28 @@ export function BarcodeNotFoundPanel({
                       </IconButton>
                     </div>
                     {row.productId === NEW_PRODUCT ? (
-                      <div className="grid grid-cols-[minmax(0,1fr)] gap-2 sm:pr-[2.75rem]">
+                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem] sm:pr-[2.75rem]">
                         <TextInput
                           aria-label="New product name"
+                          className="sm:col-span-2"
                           placeholder="Name, e.g. Doritos Nacho Cheese"
                           value={row.name}
                           onChange={(e) => setContent(index, { name: e.target.value })}
                         />
-                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_11rem]">
-                          <TextInput
-                            aria-label="Category"
-                            placeholder="Category"
-                            value={row.category}
-                            onChange={(e) => setContent(index, { category: e.target.value })}
-                          />
-                          <TextInput
-                            aria-label="Bag barcode"
-                            className="font-mono"
-                            placeholder="bag barcode (optional)"
-                            value={row.bagCode}
-                            onChange={(e) => setContent(index, { bagCode: e.target.value })}
-                            autoComplete="off"
-                          />
-                        </div>
+                        <TextInput
+                          aria-label="Category"
+                          placeholder="Category"
+                          value={row.category}
+                          onChange={(e) => setContent(index, { category: e.target.value })}
+                        />
+                        <TextInput
+                          aria-label="Bag barcode"
+                          className="font-mono"
+                          placeholder="bag barcode (optional)"
+                          value={row.bagCode}
+                          onChange={(e) => setContent(index, { bagCode: e.target.value })}
+                          autoComplete="off"
+                        />
                       </div>
                     ) : null}
                   </div>
@@ -540,15 +541,14 @@ export function BarcodeNotFoundPanel({
               </fieldset>
             </div>
           ) : (
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
-              <Field label="Name">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Name" className="sm:col-span-2">
                 <TextInput
                   placeholder="e.g. Coca-Cola Zero 12 oz can"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
               </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Category">
                 <TextInput
                   placeholder="e.g. drinks"
@@ -568,7 +568,6 @@ export function BarcodeNotFoundPanel({
                   onChange={(e) => setPrice(e.target.value)}
                 />
               </Field>
-              </div>
             </div>
           )}
 

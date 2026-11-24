@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  activeProductsByName,
   buildComboboxEntries,
   type ComboboxEntry,
   type ProductOption,
@@ -12,10 +13,8 @@ interface ProductComboboxProps {
   products: ProductOption[];
   productId: string;
   onPick: (product: ProductOption) => void;
-  /** When given, the list ends with a "New product" entry that calls this. */
-  onPickNewProduct?: () => void;
-  /** Shows "New product" in the box instead of a product name. */
-  isNewProductSelected?: boolean;
+  /** When given, the list ends with a "New product" entry. */
+  newProduct?: { isSelected: boolean; onPick: () => void };
   "aria-label"?: string;
 }
 
@@ -28,20 +27,21 @@ export function ProductCombobox({
   products,
   productId,
   onPick,
-  onPickNewProduct,
-  isNewProductSelected = false,
+  newProduct,
   "aria-label": ariaLabel,
 }: ProductComboboxProps) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
 
+  const activeProducts = useMemo(() => activeProductsByName(products), [products]);
   const searchTerm = query.trim();
-  const entries = buildComboboxEntries(products, {
+  const entries = buildComboboxEntries(activeProducts, {
     searchTerm,
-    offersNewProduct: onPickNewProduct !== undefined,
+    offersNewProduct: newProduct !== undefined,
   });
   const hasProductMatch = entries.some((entry) => entry.kind === "product");
+  const isNewProductSelected = newProduct?.isSelected ?? false;
   const selectedLabel = isNewProductSelected
     ? NEW_PRODUCT_LABEL
     : (products.find((p) => p.id === productId)?.name ?? "");
@@ -50,7 +50,7 @@ export function ProductCombobox({
     if (entry.kind === "product") {
       onPick(entry.product);
     } else {
-      onPickNewProduct?.();
+      newProduct?.onPick();
     }
     setIsOpen(false);
     setQuery("");
@@ -117,12 +117,13 @@ export function ProductCombobox({
             const isNewProduct = entry.kind === "newProduct";
             const isSelected = isNewProduct
               ? isNewProductSelected
-              : !isNewProductSelected && entry.product.id === productId;
+              : entry.product.id === productId;
+            const isHighlighted = index === highlightedIndex;
             return (
               <li
                 key={isNewProduct ? "new-product" : entry.product.id}
                 role="option"
-                aria-selected={index === highlightedIndex}
+                aria-selected={isHighlighted}
                 // Mouse-down would blur the input and close this first.
                 onMouseDown={(e) => e.preventDefault()}
                 onMouseEnter={() => setHighlightedIndex(index)}
@@ -130,8 +131,8 @@ export function ProductCombobox({
                 // Pinned to the bottom so it is reachable without scrolling
                 // past every product.
                 className={`cursor-pointer truncate px-3.5 py-2.5 text-body text-ink ${
-                  isNewProduct ? "sticky bottom-0 border-t border-line bg-card" : ""
-                } ${index === highlightedIndex ? "bg-action-soft!" : ""} ${
+                  isNewProduct ? "sticky bottom-0 border-t border-line" : ""
+                } ${isHighlighted ? "bg-action-soft" : isNewProduct ? "bg-card" : ""} ${
                   isSelected ? "font-bold" : ""
                 }`}
               >
