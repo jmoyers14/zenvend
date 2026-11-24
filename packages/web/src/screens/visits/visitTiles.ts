@@ -1,4 +1,4 @@
-import type { MachineTile } from "../../ui/MachineMap.tsx";
+import type { MachineTile, MachineTileTone } from "../../ui/MachineMap.tsx";
 import { countMeterFor } from "../../ui/machineMap.ts";
 import { arrivalsIn, type Restock } from "./restock.ts";
 import { isSlotAnswered, productIdsAfterRestock } from "./restockSlots.ts";
@@ -16,6 +16,15 @@ const emptyTile = (slotCode: string): MachineTile => ({
 
 const COUNT_STATUS = { success: "", warning: ", low", danger: ", empty" } as const;
 
+/** Hover text: the slot's status, then one product per line. */
+export const buildTooltip = ({
+  heading,
+  productNames,
+}: {
+  heading: string;
+  productNames: readonly string[];
+}): string => [heading, ...productNames.map((name) => `• ${name}`)].join("\n");
+
 /** Count: the total found against the slot's combined par. */
 export const countTileFor = ({
   rows,
@@ -30,10 +39,17 @@ export const countTileFor = ({
   if (slotRows.length === 0) {
     return emptyTile(slotCode);
   }
-  const names = slotRows.map((row) => nameOf(row.productId)).join(", ");
+  const productNames = slotRows.map((row) => nameOf(row.productId));
+  const names = productNames.join(", ");
   const shared = { productCount: slotRows.length, searchText: names };
   if (!isSlotCounted(rows, slotCode)) {
-    return { ...shared, value: "—", tone: "pending", label: `${slotCode} · ${names} · not counted` };
+    return {
+      ...shared,
+      value: "—",
+      tone: "pending",
+      label: `${slotCode} · ${names} · not counted`,
+      tooltip: buildTooltip({ heading: `${slotCode} · not counted`, productNames }),
+    };
   }
   const found = slotRows.reduce((total, row) => total + (parseCount(row.left) ?? 0), 0);
   const par = slotRows.reduce((total, row) => total + (row.par ?? 0), 0);
@@ -45,6 +61,10 @@ export const countTileFor = ({
     tone,
     meter: par > 0 ? meter : undefined,
     label: `${slotCode} · ${names} · ${amount}${COUNT_STATUS[tone]}`,
+    tooltip: buildTooltip({
+      heading: `${slotCode} · ${amount}${COUNT_STATUS[tone]}`,
+      productNames,
+    }),
   };
 };
 
@@ -75,9 +95,10 @@ export const restockTileFor = ({
   const productIdsAfter = productIdsAfterRestock(slot);
   const [frontProductId] = productIdsAfter;
   const quantity = slotQuantityFor(slotActivityFor(slot));
-  const names = [...new Set([...slotRows.map((row) => row.productId), ...productIdsAfter])]
-    .map(nameOf)
-    .join(", ");
+  const productNames = [
+    ...new Set([...slotRows.map((row) => row.productId), ...productIdsAfter]),
+  ].map(nameOf);
+  const names = productNames.join(", ");
   const shared = {
     productName: frontProductId === undefined ? "Empty" : nameOf(frontProductId),
     value: frontProductId === undefined ? answer : (quantity ?? "—"),
@@ -85,16 +106,18 @@ export const restockTileFor = ({
     searchText: names,
   };
   const inSlot = `${quantity ?? "—"} in slot`;
+  const withStatus = (tone: MachineTileTone, status: string): MachineTile => ({
+    ...shared,
+    tone,
+    label: `${slotCode} · ${names} · ${inSlot} · ${status}`,
+    tooltip: buildTooltip({ heading: `${slotCode} · ${inSlot} · ${status}`, productNames }),
+  });
 
   if (needsAttention) {
-    return { ...shared, tone: "warning", label: `${slotCode} · ${names} · ${inSlot} · needs a look` };
+    return withStatus("warning", "needs a look");
   }
   if (isSlotAnswered(slot)) {
-    return {
-      ...shared,
-      tone: "success",
-      label: `${slotCode} · ${names} · ${inSlot} · answered, ${answer}`,
-    };
+    return withStatus("success", `answered, ${answer}`);
   }
-  return { ...shared, tone: "pending", label: `${slotCode} · ${names} · ${inSlot} · not answered` };
+  return withStatus("pending", "not answered");
 };

@@ -40,8 +40,10 @@ export interface MachineTile {
   isTarget?: boolean;
   /** The slot a move or swap starts from. */
   isSource?: boolean;
-  /** Accessible name and tooltip: code, product names, status. */
+  /** Accessible name, and the tooltip unless `tooltip` is set: code, product names, status. */
   label: string;
+  /** Hover text when it should read differently from `label`, e.g. one product per line. */
+  tooltip?: string;
   /** What the map search matches besides the code, e.g. product names. */
   searchText?: string;
 }
@@ -248,7 +250,7 @@ export const MachineMap = ({
                     key={key}
                     role="img"
                     aria-label={tile.label}
-                    title={tile.label}
+                    title={tile.tooltip ?? tile.label}
                     className={className}
                   >
                     <TileFace slotCode={slotCode} tile={tile} />
@@ -261,7 +263,7 @@ export const MachineMap = ({
                   type="button"
                   aria-label={tile.label}
                   aria-pressed={slotCode === selectedCode}
-                  title={tile.label}
+                  title={tile.tooltip ?? tile.label}
                   onClick={() => onSelect(slotCode)}
                   className={`${className} cursor-pointer ${focusRing}`}
                 >
