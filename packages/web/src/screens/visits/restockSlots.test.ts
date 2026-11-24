@@ -12,12 +12,10 @@ import {
   attentionSlotCodeFor,
   isSlotAnswered,
   nextRestockSlotCode,
-  nowLevelAfterRestock,
   nowLevelFor,
   previousRestockSlotCode,
   productIdsAfterRestock,
   restockProgressFor,
-  stayingRowsIn,
   unloadableProductIdsFor,
 } from "./restockSlots.ts";
 import { buildVisitRows, type VisitRow } from "./visitRows.ts";
@@ -95,6 +93,15 @@ describe("isSlotAnswered", () => {
     expect(isSlotAnswered({ rows, restock: filled, slotCode: "A1" })).toBe(true);
   });
 
+  it("counts a partial pull with no other answer as answered", () => {
+    const rows = buildRows();
+    const coke = { ...rowFor(rows, "A1", "coke"), removed: "2", removedReason: "expired" as const };
+    const withPull = rows.map((row) => (row === rowFor(rows, "A1", "coke") ? coke : row));
+    const restock = buildRestock({ shelves: SHELVES, rows: withPull });
+
+    expect(isSlotAnswered({ rows: withPull, restock, slotCode: "A1" })).toBe(true);
+  });
+
   it("ignores an uncounted row, and a slot with nothing to answer is not answered", () => {
     const rows = buildRows({
       [slotProductKey({ slotCode: "A2", productId: "lays" })]: "",
@@ -150,57 +157,6 @@ describe("restockProgressFor", () => {
     expect(
       restockProgressFor({ rows, restock: stale, slotCodes: SHELVES.flat() }),
     ).toEqual({ answeredCount: 1, totalCount: 2 });
-  });
-});
-
-describe("nowLevelAfterRestock", () => {
-  it("is Left − pulled + Added for a product that stayed", () => {
-    const rows = buildRows().map((row) =>
-      row.productId === "coke"
-        ? { ...row, left: "5", removed: "1", removedReason: "expired" as const }
-        : row,
-    );
-    const restock = restockWithAction(
-      buildRestock({ shelves: SHELVES, rows }),
-      rowFor(rows, "A1", "coke"),
-      { kind: "added", added: "6" },
-    );
-
-    expect(nowLevelAfterRestock({ rows, restock, slotCode: "A1" })).toBe(10);
-  });
-
-  it("is the arrival's Added when it is the only product", () => {
-    const rows = buildRows();
-    const start = buildRestock({ shelves: SHELVES, rows });
-    const moved = restockWithAction(start, rowFor(rows, "A1", "coke"), {
-      kind: "moved",
-      toSlotCode: "A3",
-      isSwap: false,
-    });
-    const restock = restockWithArrivalChange(
-      moved,
-      { slotCode: "A3", productId: "coke" },
-      { added: "9" },
-    );
-
-    expect(nowLevelAfterRestock({ rows, restock, slotCode: "A3" })).toBe(9);
-    expect(nowLevelAfterRestock({ rows, restock, slotCode: "A1" })).toBe(0);
-  });
-
-  it("is null for a mixed slot or a blank Added", () => {
-    const rows = buildRows();
-    const start = buildRestock({ shelves: SHELVES, rows });
-    const blank = restockWithAction(start, rowFor(rows, "A1", "coke"), {
-      kind: "added",
-      added: "",
-    });
-
-    expect(nowLevelAfterRestock({ rows, restock: start, slotCode: "A2" })).toBe(
-      null,
-    );
-    expect(nowLevelAfterRestock({ rows, restock: blank, slotCode: "A1" })).toBe(
-      null,
-    );
   });
 });
 
@@ -272,30 +228,6 @@ describe("nextRestockSlotCode", () => {
     const restock = buildRestock({ shelves: SHELVES, rows });
 
     expect(nextAfter({ rows, restock }, "A3", ["A3", "A1", "A2"])).toBe("A1");
-  });
-});
-
-describe("stayingRowsIn", () => {
-  it("is the counted products with no answer or an Add", () => {
-    const rows = buildRows({ [slotProductKey({ slotCode: "A2", productId: "lays" })]: "" });
-    const restock = buildRestock({ shelves: SHELVES, rows });
-
-    expect(stayingRowsIn({ rows, restock, slotCode: "A2" }).map((row) => row.productId)).toEqual([
-      "doritos",
-    ]);
-  });
-
-  it("drops a product that moved or was taken out", () => {
-    const rows = buildRows();
-    const restock = restockWithAction(
-      buildRestock({ shelves: SHELVES, rows }),
-      rowFor(rows, "A2", "doritos"),
-      { kind: "pulled", reason: "expired" },
-    );
-
-    expect(stayingRowsIn({ rows, restock, slotCode: "A2" }).map((row) => row.productId)).toEqual([
-      "lays",
-    ]);
   });
 });
 

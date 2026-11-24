@@ -1,7 +1,7 @@
 import { type RemovalReason, slotProductKey } from "@zenvend/domain";
-import { type Arrival, arrivalsIn, type Restock } from "./restock.ts";
+import { answeredActionFor, type Arrival, arrivalsIn, type Restock } from "./restock.ts";
 import { hasRestockQuestions, isSlotAnswered, nowLevelFor } from "./restockSlots.ts";
-import { isCounted, parseCount, rowsInSlot, type VisitRow } from "./visitRows.ts";
+import { isCounted, parseCount, partialPullOf, rowsInSlot, type VisitRow } from "./visitRows.ts";
 
 /**
  * What happened to each product this visit, as the map tiles, the slot
@@ -49,14 +49,6 @@ export interface ProductActivity {
   notes: string[];
 }
 
-const partialPullOf = (row: VisitRow): ProductActivity["partialPull"] => {
-  const count = parseCount(row.removed);
-  if (count === null || count === 0 || row.removedReason === null) {
-    return null;
-  }
-  return { count, reason: row.removedReason };
-};
-
 const partialPullNote = ({ count, reason }: { count: number; reason: RemovalReason }) =>
   `Pulled ${count} · ${REMOVAL_LABELS[reason]}`;
 
@@ -88,7 +80,7 @@ const rowActivity = (row: VisitRow, restock: Restock): ProductActivity => {
     pulled: partialPull?.count ?? 0,
     notes: partialPull ? [partialPullNote(partialPull)] : [],
   };
-  const action = restock.actions[slotProductKey(row)];
+  const action = answeredActionFor(restock, row);
 
   if (action === undefined) {
     return { ...counted, outcome: "unanswered", notes: [...counted.notes, "No restock answer"] };
@@ -285,55 +277,4 @@ export const restockTileValueFor = ({
     0,
   );
   return signedChange(net);
-};
-
-const addedText = (added: number | null): string | null => {
-  if (added === null) {
-    return null;
-  }
-  return added > 0 ? `Added ${added}` : "Nothing added";
-};
-
-const describeActivity = (activity: ProductActivity): string | null => {
-  const pullNote = activity.partialPull ? partialPullNote(activity.partialPull) : null;
-  switch (activity.outcome) {
-    case "uncounted":
-      return null;
-    case "unanswered":
-      // A pull logged before the product's answer still shows.
-      return pullNote;
-    case "stayed":
-      return [pullNote, addedText(activity.added)].filter(Boolean).join(", ");
-    case "moved":
-    case "taken-out":
-      return activity.notes[0] ?? null;
-    case "arrived":
-      return [activity.notes[0], addedText(activity.added)].filter(Boolean).join(", ");
-  }
-};
-
-/**
- * The answers recorded in one slot, in words, for the summary row with Undo.
- * Products are named only when the slot holds more than one.
- */
-export const describeSlotAnswers = ({
-  rows,
-  restock,
-  slotCode,
-  nameOf,
-}: {
-  rows: readonly VisitRow[];
-  restock: Restock;
-  slotCode: string;
-  nameOf: (productId: string) => string;
-}): string[] => {
-  const activities = slotActivityFor({ rows, restock, slotCode });
-  const isNamed = activities.length > 1;
-  return activities.flatMap((activity) => {
-    const text = describeActivity(activity);
-    if (text === null) {
-      return [];
-    }
-    return [isNamed ? `${nameOf(activity.productId)}: ${text}` : text];
-  });
 };

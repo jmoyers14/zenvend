@@ -6,15 +6,14 @@ import { formatCents, parseDollarsToCents } from "../../utils/money.ts";
 import { plural } from "../../utils/text.ts";
 import type { ProductOption } from "../machines/ProductCombobox.tsx";
 import {
-  arrivalsIn,
   type Restock,
-  restockWithNewStock,
-  restockWithoutSlot,
+  restockWithAction,
+  restockWithoutNewStock,
   restockWithPrice,
   restockWithRestUnchanged,
 } from "./restock.ts";
-import { AddStockPanel, LoadProductPanel, PullPanel } from "./RestockPanels.tsx";
-import { isSlotAnswered, stayingRowsIn, unloadableProductIdsFor } from "./restockSlots.ts";
+import { AddProductPanel, AddStockPanel, PullPanel } from "./RestockPanels.tsx";
+import { isSlotAnswered, unloadableProductIdsFor } from "./restockSlots.ts";
 import {
   EditorCard,
   EditorFooter,
@@ -23,15 +22,14 @@ import {
   PriceLabel,
   SlotEditorHeader,
 } from "./SlotEditor.tsx";
-import { describeSlotAnswers } from "./visitActivity.ts";
+import { SlotContentsList } from "./SlotContentsList.tsx";
 import {
-  isCounted,
-  leftAfterPull,
-  rowsInSlot,
-  rowWithRemoved,
-  rowWithRemovedReason,
-  type VisitRow,
-} from "./visitRows.ts";
+  type Departure,
+  type RowAction,
+  type SlotItem,
+  slotContentsFor,
+} from "./slotContents.ts";
+import { isCounted, rowsInSlot, type VisitRow } from "./visitRows.ts";
 
 /** A Move or Swap waiting for its destination on the map. */
 export interface SlotPick {
@@ -43,37 +41,15 @@ export interface SlotPick {
   notice: string | null;
 }
 
-/** The inset open in the Restock editor, if any. */
-export type RestockPanel = "add" | "pull" | "choose-move" | "choose-swap" | "load";
-
-/** What the slot needs before any panel opens. */
-type SlotView = "uncounted" | "empty" | "actions" | "arrivals" | "settled";
-
-const slotViewFor = ({
-  slotRows,
-  stayingRows,
-  arrivalCount,
-}: {
-  slotRows: VisitRow[];
-  stayingRows: VisitRow[];
-  arrivalCount: number;
-}): SlotView => {
-  if (slotRows.some((row) => !isCounted(row))) {
-    return "uncounted";
-  }
-  if (slotRows.length === 0 && arrivalCount === 0) {
-    return "empty";
-  }
-  if (stayingRows.length > 0) {
-    return "actions";
-  }
-  return arrivalCount > 0 ? "arrivals" : "settled";
-};
+/** The panel open under the slot's rows, if any. */
+export type RestockPanel =
+  | { kind: "add-stock"; key: string }
+  | { kind: "pull"; key: string }
+  | { kind: "add-product" };
 
 /**
- * The Restock step's editor for one slot. A slot is answered once every
- * product in it has an action: Add stock, Move, Swap, Pull (taken out) or
- * Nothing changed, plus a Went in for anything loaded or moved in.
+ * The Restock step's editor for one slot: its products front to back, each
+ * with its own actions. A slot is answered once every product in it has one.
  */
 export function RestockSlotEditor({
   slotCode,
@@ -132,19 +108,10 @@ export function RestockSlotEditor({
 
   const slot = { rows, restock, slotCode };
   const slotRows = rowsInSlot(rows, slotCode);
-  const stayingRows = stayingRowsIn(slot);
-  const arrivals = arrivalsIn(restock, slotCode);
-  const view = slotViewFor({ slotRows, stayingRows, arrivalCount: arrivals.length });
+  const contents = slotContentsFor(slot);
+  const isUncounted = slotRows.some((row) => !isCounted(row));
   const isAnswered = isSlotAnswered(slot);
-  const answers = describeSlotAnswers({ ...slot, nameOf });
   const isPicking = pick?.row.slotCode === slotCode;
-  const isPanelOpen = panel !== null || isPicking;
-  const productNames = [
-    ...new Set([
-      ...slotRows.map((row) => row.productId),
-      ...arrivals.map((arrival) => arrival.productId),
-    ]),
-  ].map(nameOf);
   const price = restock.prices[slotCode] ?? "";
   const priceCents = parseDollarsToCents(price);
   const unloadable = unloadableProductIdsFor(slot);
@@ -156,43 +123,61 @@ export function RestockSlotEditor({
       ? []
       : rowsInSlot(rows, pick.partnerSlotCode).filter(isCounted);
 
-  const handleMoveOrSwap = ({ isSwap }: { isSwap: boolean }) => {
-    const [only] = stayingRows;
-    if (stayingRows.length === 1 && only) {
-      onStartPick(only, { isSwap });
+  const panelItem =
+    panel !== null && "key" in panel
+      ? contents.items.find((item) => item.key === panel.key)
+      : undefined;
+  // A keyed panel whose row has gone (its arrival undone) renders nothing, so
+  // it counts as closed.
+  const isAddStockOpen = panel?.kind === "add-stock" && panelItem !== undefined;
+  const isPullOpen = panel?.kind === "pull" && panelItem?.kind === "counted";
+  const openItem = isAddStockOpen || isPullOpen ? panelItem : undefined;
+  const isPanelOpen = openItem !== undefined || panel?.kind === "add-product" || isPicking;
+  const editingKey = isPicking && pick ? slotProductKey(pick.row) : (openItem?.key ?? null);
+  const hasUnansweredCounted = contents.items.some(
+    (item) => item.kind === "counted" && !item.isAnswered,
+  );
+  const closePanel = () => onPanelChange(null);
+
+  const handleUndoDeparture = (departure: Departure) => {
+    const next = restockWithAction(restock, departure.row, null);
+    const nextItems = slotContentsFor({ ...slot, restock: next }).items;
+    if (openItem && !nextItems.some((item) => item.key === openItem.key)) {
+      closePanel();
+    }
+    onRestockChange(next);
+  };
+
+  const handleAction = (item: SlotItem, action: RowAction) => {
+    onCancelPick();
+    if (action === "add-stock") {
+      onPanelChange({ kind: "add-stock", key: item.key });
       return;
     }
-    onPanelChange(isSwap ? "choose-swap" : "choose-move");
-  };
-
-  const handleUndo = () => {
-    onPanelChange(null);
-    onCancelPick();
-    for (const row of slotRows) {
-      if (row.removed.trim() !== "") {
-        onRowChange(rowWithRemovedReason(rowWithRemoved(row, ""), null));
-      }
+    if (action === "pull" || action === "edit-pull") {
+      onPanelChange({ kind: "pull", key: item.key });
+      return;
     }
-    onRestockChange(restockWithoutSlot(restock, { rows, slotCode }));
+    closePanel();
+    if (item.kind === "arrival") {
+      const { arrival } = item;
+      if (action === "remove") {
+        onRestockChange(restockWithoutNewStock(restock, arrival));
+        return;
+      }
+      if (action === "undo-move" && item.source) {
+        onRestockChange(restockWithAction(restock, item.source, null));
+      }
+      return;
+    }
+    if (action === "move" || action === "swap") {
+      onStartPick(item.row, { isSwap: action === "swap" });
+      return;
+    }
+    if (action === "nothing-changed") {
+      onRestockChange(restockWithAction(restock, item.row, { kind: "added", added: "0" }));
+    }
   };
-
-  const handleLoad = (product: ProductOption) => {
-    onRestockChange(
-      restockWithNewStock(restock, {
-        slotCode,
-        productId: product.id,
-        tracksExpiration: tracksExpirationOf(product.id),
-      }),
-    );
-    onPanelChange("add");
-  };
-
-  const subtitle = stayingRows
-    .map((row) => {
-      const level = `${leftAfterPull(row) ?? "—"}${row.par === null ? "" : ` / ${row.par}`} in slot`;
-      return stayingRows.length > 1 ? `${nameOf(row.productId)}: ${level}` : level;
-    })
-    .join(" · ");
 
   // One primary in view: an open panel's own button, else the slot's next step.
   const primary = (() => {
@@ -202,20 +187,19 @@ export function RestockSlotEditor({
     if (isEverySlotAnswered || (isLastSlot && isAnswered)) {
       return "review";
     }
-    if (isAnswered || view === "empty" || view === "settled") {
+    if (isAnswered || contents.items.length === 0) {
       return "next";
     }
-    return "add";
+    return null;
   })();
-  const isIdle = !isPanelOpen && view !== "uncounted";
 
   return (
     <EditorCard label={`Restock slot ${slotCode}`}>
       <SlotEditorHeader
         slotCode={slotCode}
         shelfLabel={shelfLabel}
-        productNames={productNames}
-        subtitle={subtitle || undefined}
+        productNames={isUncounted ? slotRows.map((row) => nameOf(row.productId)) : undefined}
+        productCount={isUncounted ? undefined : contents.items.length}
         price={
           <>
             <PriceLabel>Price</PriceLabel>
@@ -262,124 +246,66 @@ export function RestockSlotEditor({
         </Alert>
       ) : null}
 
-      {answers.length > 0 ? (
-        <div
-          className={`flex items-center justify-between gap-3 rounded-control px-4 py-2.5 text-button ${
-            isAnswered ? "bg-success-soft text-success" : "bg-app text-ink-soft"
-          }`}
-        >
-          <span>
-            {isAnswered ? "✓ " : ""}
-            {answers.join(" · ")}
-          </span>
-          <Button variant="text" onClick={handleUndo}>
-            Undo
-          </Button>
-        </div>
-      ) : null}
-
-      {view === "uncounted" ? (
+      {isUncounted ? (
         <EditorNotice>
           Count this slot before restocking it.
           <Button variant="secondary" onClick={onCountSlot}>
             Count {slotCode}
           </Button>
         </EditorNotice>
-      ) : null}
+      ) : (
+        <SlotContentsList
+          contents={contents}
+          editingKey={editingKey}
+          nameOf={nameOf}
+          onAction={handleAction}
+          onUndoDeparture={handleUndoDeparture}
+          onAddProduct={() => {
+            onCancelPick();
+            onPanelChange({ kind: "add-product" });
+          }}
+          onRestUnchanged={
+            hasUnansweredCounted
+              ? () => onRestockChange(restockWithRestUnchanged(restock, slotRows))
+              : null
+          }
+        />
+      )}
 
-      {isIdle && view === "empty" && panel !== "load" ? (
-        <EditorNotice>This slot is empty. Load a product below, or leave it empty.</EditorNotice>
-      ) : null}
-
-      {isIdle && view === "actions" ? (
-        <div className="grid gap-3">
-          <p className="text-body font-bold text-ink">
-            {isAnswered ? "Anything else in this slot?" : "What happened in this slot?"}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant={primary === "add" ? "primary" : "secondary"}
-              onClick={() => onPanelChange("add")}
-            >
-              Add stock
-            </Button>
-            <Button variant="secondary" onClick={() => handleMoveOrSwap({ isSwap: false })}>
-              Move →
-            </Button>
-            <Button variant="secondary" onClick={() => handleMoveOrSwap({ isSwap: true })}>
-              Swap ⇄
-            </Button>
-            <Button variant="secondary" onClick={() => onPanelChange("pull")}>
-              Pull
-            </Button>
-            {isAnswered ? null : (
-              <>
-                <span aria-hidden className="mx-2 h-7 w-px bg-line" />
-                <Button
-                  variant="text"
-                  onClick={() => onRestockChange(restockWithRestUnchanged(restock, stayingRows))}
-                >
-                  Nothing changed
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-      ) : null}
-
-      {isIdle && view === "arrivals" && !isAnswered ? (
-        <Button
-          variant={primary === "add" ? "primary" : "secondary"}
-          className="justify-self-start"
-          onClick={() => onPanelChange("add")}
-        >
-          Enter what went in
-        </Button>
-      ) : null}
-
-      {panel === "add" ? (
+      {isAddStockOpen && panelItem ? (
         <AddStockPanel
-          slotCode={slotCode}
-          rows={rows}
+          key={panelItem.key}
+          item={panelItem}
           restock={restock}
+          rows={rows}
           nameOf={nameOf}
           onRestockChange={onRestockChange}
-          onDone={() => onPanelChange(null)}
+          onDone={closePanel}
         />
       ) : null}
 
-      {panel === "pull" && view === "actions" ? (
+      {isPullOpen && panelItem?.kind === "counted" ? (
         <PullPanel
-          pullableRows={stayingRows}
+          key={panelItem.key}
+          item={panelItem}
           restock={restock}
           nameOf={nameOf}
           onRowChange={onRowChange}
           onRestockChange={onRestockChange}
-          onDone={() => onPanelChange(null)}
+          onDone={closePanel}
         />
       ) : null}
 
-      {panel === "choose-move" || panel === "choose-swap" ? (
-        <EditorInset
-          title={`${panel === "choose-move" ? "Move" : "Swap"} from ${slotCode}`}
-          onCancel={() => onPanelChange(null)}
-        >
-          <ChipGroup
-            label="Which product?"
-            options={stayingRows.map((row) => ({
-              value: slotProductKey(row),
-              label: nameOf(row.productId),
-            }))}
-            value={null}
-            onChange={(key) => {
-              const row = stayingRows.find((candidate) => slotProductKey(candidate) === key);
-              if (row) {
-                onStartPick(row, { isSwap: panel === "choose-swap" });
-                onPanelChange(null);
-              }
-            }}
-          />
-        </EditorInset>
+      {panel?.kind === "add-product" ? (
+        <AddProductPanel
+          slotCode={slotCode}
+          products={loadableProducts}
+          rows={rows}
+          restock={restock}
+          tracksExpirationOf={tracksExpirationOf}
+          onRestockChange={onRestockChange}
+          onDone={closePanel}
+        />
       ) : null}
 
       {isPicking && pick ? (
@@ -415,26 +341,6 @@ export function RestockSlotEditor({
           )}
           {pick.notice ? <p className="text-body-sm font-bold text-warning">{pick.notice}</p> : null}
         </EditorInset>
-      ) : null}
-
-      {panel === "load" ? (
-        <LoadProductPanel
-          slotCode={slotCode}
-          products={loadableProducts}
-          onLoad={handleLoad}
-          onCancel={() => onPanelChange(null)}
-        />
-      ) : null}
-
-      {panel !== "load" && view !== "uncounted" ? (
-        <div className="grid justify-items-start gap-1 border-t border-divider pt-5">
-          <Button variant="text" onClick={() => onPanelChange("load")}>
-            + Load a different product
-          </Button>
-          <p className="text-body-sm text-muted-strong">
-            To replace a product, Move or Pull the old one first.
-          </p>
-        </div>
       ) : null}
 
       <EditorFooter

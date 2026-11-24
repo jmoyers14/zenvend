@@ -1,6 +1,8 @@
 // Design system barrel. Screens import from here; the implementations live in
 // ./ui/ so each primitive stays small and independently readable.
 
+export type { ActionMenuItem } from "./ui/ActionMenu.tsx";
+export { ActionMenu } from "./ui/ActionMenu.tsx";
 export { Alert, ErrorNote } from "./ui/Alert.tsx";
 export type { BadgeSize, BadgeTone } from "./ui/Badge.tsx";
 export { Badge } from "./ui/Badge.tsx";

@@ -25,6 +25,7 @@ import { CountSlotEditor } from "./CountSlotEditor.tsx";
 import { localDateTimeToIso, toLocalDateTimeInput } from "./countedAt.ts";
 import { type RestockPanel, RestockSlotEditor, type SlotPick } from "./RestockSlotEditor.tsx";
 import {
+  answeredActionFor,
   buildRestock,
   type Restock,
   restockWithAction,
@@ -295,7 +296,7 @@ function VisitFlow({
   const problems = "problems" in submissionResult ? submissionResult.problems : [];
   const attentionSlotCodes = new Set(problems.map(attentionSlotCodeFor));
   const hasUnansweredProduct = rows.some(
-    (row) => isCounted(row) && restock.actions[slotProductKey(row)] === undefined,
+    (row) => isCounted(row) && answeredActionFor(restock, row) === undefined,
   );
 
   // Functional, so several row edits in one handler (Undo) all land.

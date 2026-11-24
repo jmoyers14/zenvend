@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { type ButtonHTMLAttributes, forwardRef, type ReactNode } from "react";
 import { focusRing } from "./focus.ts";
 
 /**
@@ -77,23 +77,30 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
 };
 
-export const Button = ({
-  variant = "primary",
-  size = "md",
-  isFullWidth = false,
-  className = "",
-  type = "button",
-  children,
-  ...rest
-}: ButtonProps) => (
-  <button
-    type={type}
-    className={buttonClass({ variant, size, isFullWidth, className })}
-    {...rest}
-  >
-    {children}
-  </button>
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      variant = "primary",
+      size = "md",
+      isFullWidth = false,
+      className = "",
+      type = "button",
+      children,
+      ...rest
+    },
+    ref,
+  ) => (
+    <button
+      ref={ref}
+      type={type}
+      className={buttonClass({ variant, size, isFullWidth, className })}
+      {...rest}
+    >
+      {children}
+    </button>
+  ),
 );
+Button.displayName = "Button";
 
 const ICON_TONE = {
   neutral: "text-muted-strong hover:bg-action-soft hover:text-link",

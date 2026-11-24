@@ -420,6 +420,18 @@ describe("buildVisitSubmission: other rules", () => {
     ]);
   });
 
+  it("a move with no further input submits the units that moved", () => {
+    const rows = countRows({ [A1_CHEETOS]: "4" });
+    const restock = withAction(buildRestock({ shelves: SHELVES, rows }), rowFor(rows, "A1", "cheetos"), {
+      kind: "moved",
+      toSlotCode: "B1",
+      isSwap: false,
+    });
+    const lines = submissionOf({ rows, restock }).lines;
+
+    expect(lines.find((entry) => entry.slotCode === "B1")?.added).toBe(4);
+  });
+
   it("blank Added on an arrival is added-blank, not 0", () => {
     const rows = countRows({});
     const restock = restockWithNewStock(buildRestock({ shelves: SHELVES, rows }), {
@@ -473,6 +485,28 @@ describe("buildVisitSubmission: other rules", () => {
     expect(problemsOf({ rows, restock })).toEqual([
       { kind: "unanswered", slotCode: "A1", productId: "cheetos" },
       { kind: "unanswered", slotCode: "A2", productId: "fritos" },
+    ]);
+  });
+
+  it("a partial pull with no restock action is answered as Added 0", () => {
+    const rows = countRows({ [A1_CHEETOS]: "5" }).map((row) =>
+      row.slotCode === "A1" && row.productId === "cheetos"
+        ? { ...row, removed: "2", removedReason: "expired" as const }
+        : row,
+    );
+    const restock = buildRestock({ shelves: SHELVES, rows });
+
+    const submission = submissionOf({ rows, restock });
+
+    expect(submission.lines).toEqual([
+      line({
+        slotCode: "A1",
+        productId: "cheetos",
+        remaining: 5,
+        added: 0,
+        removed: 2,
+        removedReason: "expired",
+      }),
     ]);
   });
 

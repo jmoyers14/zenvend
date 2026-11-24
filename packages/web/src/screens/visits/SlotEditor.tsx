@@ -17,25 +17,36 @@ export const EditorCard = ({
 
 /**
  * Slot badge, where the slot is, the product name(s) one per line, and the
- * price block on the right.
+ * price block on the right. Given `productCount`, the rows below name the
+ * products, so the header only counts them.
  */
 export const SlotEditorHeader = ({
   slotCode,
   shelfLabel,
-  productNames,
+  productNames = [],
+  productCount,
   subtitle,
   price,
 }: {
   slotCode: string;
   shelfLabel: string;
-  productNames: string[];
+  productNames?: string[];
+  productCount?: number;
   subtitle?: ReactNode;
   price: ReactNode;
 }) => {
-  const note =
-    productNames.length > 1
-      ? `Row ${shelfLabel} · ${productNames.length} products share this slot`
-      : `Row ${shelfLabel}`;
+  const count = productCount ?? productNames.length;
+  const note = (() => {
+    if (count === 0) {
+      return "No product loaded";
+    }
+    if (count === 1) {
+      return `Row ${shelfLabel}`;
+    }
+    return productCount === undefined
+      ? `Row ${shelfLabel} · ${count} products share this slot`
+      : `Row ${shelfLabel} · ${count} products, front to back`;
+  })();
   return (
     <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 border-b border-divider pb-6">
       <div className="grid min-w-0 gap-2.5">
@@ -43,19 +54,19 @@ export const SlotEditorHeader = ({
           <span className="inline-flex h-[26px] items-center rounded-full bg-divider px-2.5 font-mono text-body-sm font-medium text-ink">
             {slotCode}
           </span>
-          <span className="text-body-sm text-muted-strong">
-            {productNames.length === 0 ? "No product loaded" : note}
-          </span>
+          <span className="text-body-sm text-muted-strong">{note}</span>
         </div>
-        <h2 className="font-display text-title text-ink">
-          {productNames.length === 0
-            ? "Empty slot"
-            : productNames.map((name) => (
-                <span key={name} className="block">
-                  {name}
-                </span>
-              ))}
-        </h2>
+        {productCount === undefined ? (
+          <h2 className="font-display text-title text-ink">
+            {productNames.length === 0
+              ? "Empty slot"
+              : productNames.map((name) => (
+                  <span key={name} className="block">
+                    {name}
+                  </span>
+                ))}
+          </h2>
+        ) : null}
         {subtitle ? (
           <p className="text-body-sm text-muted-strong tabular-nums">{subtitle}</p>
         ) : null}

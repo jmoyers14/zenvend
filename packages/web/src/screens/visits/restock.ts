@@ -1,6 +1,6 @@
 import { type SlotProduct, slotProductKey } from "@zenvend/domain";
 import { centsToInput } from "../../utils/money.ts";
-import { isCounted, type VisitRow } from "./visitRows.ts";
+import { hasPartialPull, isCounted, leftAfterPull, type VisitRow } from "./visitRows.ts";
 
 /**
  * The Restock step's state: what the operator did to each counted product,
@@ -47,8 +47,12 @@ export interface Restock {
 const isSameProduct = (a: SlotProduct, b: SlotProduct): boolean =>
   a.slotCode === b.slotCode && a.productId === b.productId;
 
-const actionOf = (restock: Restock, key: SlotProduct): ProductAction | undefined =>
-  restock.actions[slotProductKey(key)];
+/** Only what was recorded. A partial pull alone isn't an action here; use
+ *  `answeredActionFor` to ask whether the row is answered. */
+export const recordedActionFor = (
+  restock: Restock,
+  key: SlotProduct,
+): ProductAction | undefined => restock.actions[slotProductKey(key)];
 
 const withoutAction = (
   actions: Restock["actions"],
@@ -81,7 +85,7 @@ const pricesWithFallback = (
 /** Removes `row`'s action and the arrival it created, without touching a swap
  *  partner. */
 const withoutRowAction = (restock: Restock, row: VisitRow): Restock => {
-  const previous = actionOf(restock, row);
+  const previous = recordedActionFor(restock, row);
   const actions = withoutAction(restock.actions, row);
   if (previous?.kind !== "moved") {
     return { ...restock, actions };
@@ -98,7 +102,7 @@ const withoutRowAction = (restock: Restock, row: VisitRow): Restock => {
 /** The row that was swapped with `row`. Null when `row` isn't half of a
  *  swap. */
 const swapPartnerKey = (restock: Restock, row: VisitRow): SlotProduct | null => {
-  const previous = actionOf(restock, row);
+  const previous = recordedActionFor(restock, row);
   if (
     previous?.kind !== "moved" ||
     !previous.isSwap ||
@@ -118,7 +122,7 @@ const withMove = (
     slotCode: action.toSlotCode,
     productId: row.productId,
     fromSlotCode: row.slotCode,
-    added: "",
+    added: String(leftAfterPull(row) ?? ""),
     bestBy: row.bestBy,
     tracksExpiration: row.tracksExpiration,
   };
@@ -225,6 +229,25 @@ export const restockWithoutNewStock = (
   ),
 });
 
+/** A source "Came from X?" linked, with the action it had before. */
+export interface LinkedSource {
+  row: VisitRow;
+  action: ProductAction | undefined;
+}
+
+/** Takes back a product added through Add a product, and only that: its
+ *  arrival goes, and a source it was linked to gets its earlier action back. */
+export const restockWithoutAddedProduct = (
+  restock: Restock,
+  { key, linkedSource }: { key: SlotProduct; linkedSource: LinkedSource | null },
+): Restock => {
+  if (linkedSource === null) {
+    return restockWithoutNewStock(restock, key);
+  }
+  const cleared = restockWithAction(restock, linkedSource.row, null);
+  return restockWithAction(cleared, linkedSource.row, linkedSource.action ?? null);
+};
+
 export const restockWithArrivalChange = (
   restock: Restock,
   key: SlotProduct,
@@ -270,7 +293,7 @@ export const restockWithSourceLinked = (
   restock: Restock,
   { arrival, source }: { arrival: Arrival; source: VisitRow },
 ): Restock => {
-  const sourceAction = actionOf(restock, source);
+  const sourceAction = recordedActionFor(restock, source);
   const isAlreadyLinked =
     sourceAction?.kind === "moved" &&
     sourceAction.toSlotCode === arrival.slotCode &&
@@ -327,7 +350,7 @@ export const suggestedSourcesFor = (
   arrival: Arrival,
 ): VisitRow[] =>
   rows.filter((row) => {
-    const action = actionOf(restock, row);
+    const action = recordedActionFor(restock, row);
     return (
       isCounted(row) &&
       row.productId === arrival.productId &&
@@ -337,25 +360,15 @@ export const suggestedSourcesFor = (
     );
   });
 
+/** The row's action. A partial pull with no action reads as Added 0, since
+ *  the pull is the answer and the rest of the shelf stays. */
+export const answeredActionFor = (restock: Restock, row: VisitRow): ProductAction | undefined => {
+  const action = recordedActionFor(restock, row);
+  if (action !== undefined) {
+    return action;
+  }
+  return hasPartialPull(row) ? { kind: "added", added: "0" } : undefined;
+};
+
 export const arrivalsIn = (restock: Restock, slotCode: string): Arrival[] =>
   restock.arrivals.filter((arrival) => arrival.slotCode === slotCode);
-
-/**
- * Undoes everything answered in one slot: its products' actions (with
- * whatever a move or swap created) and the new stock loaded into it. Stock
- * moved in from another slot is that slot's answer, so it stays.
- */
-export const restockWithoutSlot = (
-  restock: Restock,
-  { rows, slotCode }: { rows: readonly VisitRow[]; slotCode: string },
-): Restock => {
-  const cleared = rows
-    .filter((row) => row.slotCode === slotCode)
-    .reduce((current, row) => restockWithAction(current, row, null), restock);
-  return {
-    ...cleared,
-    arrivals: cleared.arrivals.filter(
-      (arrival) => arrival.slotCode !== slotCode || arrival.fromSlotCode !== null,
-    ),
-  };
-};

@@ -6,12 +6,12 @@ import {
   restockWithAction,
   restockWithArrivalChange,
   restockWithNewStock,
+  restockWithoutAddedProduct,
   restockWithoutNewStock,
   restockWithPrice,
   restockWithRestUnchanged,
   restockWithSourceLinked,
   restockWithSwap,
-  restockWithoutSlot,
   suggestedSourcesFor,
 } from "./restock.ts";
 import { buildVisitRows, type VisitRow } from "./visitRows.ts";
@@ -87,12 +87,28 @@ describe("restockWithAction", () => {
         slotCode: "B1",
         productId: "coke",
         fromSlotCode: "A1",
-        added: "",
+        added: "4",
         bestBy: "2026-12-01",
         tracksExpiration: true,
       },
     ]);
     expect(start.arrivals).toEqual([]);
+  });
+
+  it("a move pre-fills the arrival with what was left after the pull", () => {
+    const rows = countedRows({ [slotProductKey({ slotCode: "A1", productId: "coke" })]: "5" }).map((row) =>
+      row.productId === "coke" ? { ...row, removed: "2", removedReason: "expired" as const } : row,
+    );
+    const coke = rowFor(rows, "A1", "coke");
+    const start = buildRestock({ shelves: SHELVES, rows });
+
+    const next = restockWithAction(start, coke, {
+      kind: "moved",
+      toSlotCode: "B1",
+      isSwap: false,
+    });
+
+    expect(next.arrivals[0]?.added).toBe("3");
   });
 
   it("moving into an empty-before slot pre-fills the source's price", () => {
@@ -448,6 +464,49 @@ const move = (toSlotCode: string) => ({
   isSwap: false,
 });
 
+describe("restockWithoutAddedProduct", () => {
+  const rows = countedRows();
+  const coke = rowFor(rows, "A1", "coke");
+  const start = buildRestock({ shelves: SHELVES, rows });
+  const pulled = restockWithAction(start, coke, { kind: "pulled", reason: "destocked" });
+  const key = { slotCode: "B1", productId: "coke" };
+  const withStock = restockWithNewStock(pulled, { ...key, tracksExpiration: true });
+
+  it("removes the new stock and keeps edits made since", () => {
+    const edited = restockWithPrice(withStock, "A2", "2.00");
+
+    const next = restockWithoutAddedProduct(edited, { key, linkedSource: null });
+
+    expect(next.arrivals).toEqual([]);
+    expect(next.prices.A2).toBe("2.00");
+    expect(next.actions[slotProductKey(coke)]).toEqual({ kind: "pulled", reason: "destocked" });
+  });
+
+  it("gives a linked source back its earlier action", () => {
+    const [arrival] = arrivalsIn(withStock, "B1");
+    const linked = restockWithSourceLinked(withStock, {
+      arrival: arrival as NonNullable<typeof arrival>,
+      source: coke,
+    });
+    const edited = restockWithAction(linked, rowFor(rows, "A2", "lays"), {
+      kind: "added",
+      added: "3",
+    });
+
+    const next = restockWithoutAddedProduct(edited, {
+      key,
+      linkedSource: { row: coke, action: pulled.actions[slotProductKey(coke)] },
+    });
+
+    expect(next.arrivals).toEqual([]);
+    expect(next.actions[slotProductKey(coke)]).toEqual({ kind: "pulled", reason: "destocked" });
+    expect(next.actions[slotProductKey(rowFor(rows, "A2", "lays"))]).toEqual({
+      kind: "added",
+      added: "3",
+    });
+  });
+});
+
 describe("swap partner and re-moves", () => {
   it("clearing a swap in a mixed slot clears the partner, not an earlier plain move", () => {
     const rows = countedRows();
@@ -613,69 +672,4 @@ describe("immutability", () => {
       expect(base).toEqual(before);
     });
   }
-});
-
-describe("restockWithoutSlot", () => {
-  it("clears every product's answer in the slot and the stock loaded into it", () => {
-    const rows = countedRows();
-    let restock = buildRestock({ shelves: SHELVES, rows });
-    restock = restockWithAction(restock, rowFor(rows, "A2", "doritos"), {
-      kind: "added",
-      added: "3",
-    });
-    restock = restockWithAction(restock, rowFor(rows, "A2", "lays"), {
-      kind: "pulled",
-      reason: "expired",
-    });
-    restock = restockWithNewStock(restock, {
-      slotCode: "A2",
-      productId: "coke",
-      tracksExpiration: true,
-    });
-
-    const cleared = restockWithoutSlot(restock, { rows, slotCode: "A2" });
-
-    expect(cleared.actions).toEqual({});
-    expect(arrivalsIn(cleared, "A2")).toEqual([]);
-  });
-
-  it("undoing a move also takes back the arrival it created", () => {
-    const rows = countedRows();
-    const moved = restockWithAction(
-      buildRestock({ shelves: SHELVES, rows }),
-      rowFor(rows, "A1", "coke"),
-      { kind: "moved", toSlotCode: "A3", isSwap: false },
-    );
-
-    const cleared = restockWithoutSlot(moved, { rows, slotCode: "A1" });
-
-    expect(arrivalsIn(cleared, "A3")).toEqual([]);
-  });
-
-  it("leaves stock moved in from another slot, which is that slot's answer", () => {
-    const rows = countedRows();
-    const moved = restockWithAction(
-      buildRestock({ shelves: SHELVES, rows }),
-      rowFor(rows, "A1", "coke"),
-      { kind: "moved", toSlotCode: "A3", isSwap: false },
-    );
-
-    const cleared = restockWithoutSlot(moved, { rows, slotCode: "A3" });
-
-    expect(arrivalsIn(cleared, "A3")).toHaveLength(1);
-    expect(cleared.actions[slotProductKey(rowFor(rows, "A1", "coke"))]).toBeDefined();
-  });
-
-  it("leaves other slots' answers alone", () => {
-    const rows = countedRows();
-    const restock = restockWithAction(
-      buildRestock({ shelves: SHELVES, rows }),
-      rowFor(rows, "A1", "coke"),
-      { kind: "added", added: "6" },
-    );
-
-    const cleared = restockWithoutSlot(restock, { rows, slotCode: "A2" });
-
-    expect(cleared).toEqual(restock);
-  });
 });
