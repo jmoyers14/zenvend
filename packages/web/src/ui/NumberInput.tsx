@@ -1,5 +1,5 @@
 import { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
-import { controlClass, useControlAria } from "./TextInput.tsx";
+import { controlClass, passwordManagerOptOut, useControlAria } from "./TextInput.tsx";
 
 /**
  * `sm` sits in a table row, `md` is a form field, `lg` is the big count input
@@ -56,8 +56,7 @@ const AffixedInput = forwardRef<
         // Password managers read numeric fields as card or one-time-code
         // fields and pop their autofill over the count.
         autoComplete="off"
-        data-1p-ignore=""
-        data-lpignore="true"
+        {...passwordManagerOptOut}
         {...rest}
         {...aria}
         className={`${controlClass} ${SIZE[size]} ${padding} font-mono font-medium tabular-nums ${className}`}

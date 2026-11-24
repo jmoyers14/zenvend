@@ -9,6 +9,16 @@ import { focusRing } from "./focus.ts";
 
 export const controlClass = `w-full rounded-control border border-field bg-card text-body text-ink placeholder:text-muted focus-visible:border-action aria-invalid:border-danger disabled:cursor-not-allowed disabled:bg-disabled disabled:text-on-disabled ${focusRing}`;
 
+// Password managers ignore autocomplete="off"; each needs its own opt-out.
+// Sign-in is Clerk's, so no field of ours should ever be filled by one.
+export const passwordManagerOptOut = {
+  "data-1p-ignore": true, // 1Password
+  "data-lpignore": "true", // LastPass
+  "data-bwignore": true, // Bitwarden
+  "data-form-type": "other", // Dashlane
+  "data-protonpass-ignore": true, // Proton Pass
+} as const;
+
 interface ControlAria {
   id?: string;
   "aria-describedby"?: string;
@@ -34,6 +44,7 @@ export const TextInput = forwardRef<
     <input
       ref={ref}
       type={type}
+      {...passwordManagerOptOut}
       {...rest}
       {...aria}
       className={`${controlClass} h-12 px-3.5 ${className}`}
@@ -69,6 +80,7 @@ export const TextArea = forwardRef<
     <textarea
       ref={ref}
       rows={rows}
+      {...passwordManagerOptOut}
       {...rest}
       {...aria}
       className={`${controlClass} min-h-24 resize-y px-3.5 py-3 ${className}`}
