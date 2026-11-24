@@ -87,12 +87,28 @@ describe("restockWithAction", () => {
         slotCode: "B1",
         productId: "coke",
         fromSlotCode: "A1",
-        added: "",
+        added: "4",
         bestBy: "2026-12-01",
         tracksExpiration: true,
       },
     ]);
     expect(start.arrivals).toEqual([]);
+  });
+
+  it("a move pre-fills the arrival with what was left after the pull", () => {
+    const rows = countedRows({ [slotProductKey({ slotCode: "A1", productId: "coke" })]: "5" }).map((row) =>
+      row.productId === "coke" ? { ...row, removed: "2", removedReason: "expired" as const } : row,
+    );
+    const coke = rowFor(rows, "A1", "coke");
+    const start = buildRestock({ shelves: SHELVES, rows });
+
+    const next = restockWithAction(start, coke, {
+      kind: "moved",
+      toSlotCode: "B1",
+      isSwap: false,
+    });
+
+    expect(next.arrivals[0]?.added).toBe("3");
   });
 
   it("moving into an empty-before slot pre-fills the source's price", () => {

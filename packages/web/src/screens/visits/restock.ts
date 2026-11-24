@@ -1,6 +1,6 @@
 import { type SlotProduct, slotProductKey } from "@zenvend/domain";
 import { centsToInput } from "../../utils/money.ts";
-import { hasPartialPull, isCounted, type VisitRow } from "./visitRows.ts";
+import { hasPartialPull, isCounted, leftAfterPull, type VisitRow } from "./visitRows.ts";
 
 /**
  * The Restock step's state: what the operator did to each counted product,
@@ -118,7 +118,7 @@ const withMove = (
     slotCode: action.toSlotCode,
     productId: row.productId,
     fromSlotCode: row.slotCode,
-    added: "",
+    added: String(leftAfterPull(row) ?? ""),
     bestBy: row.bestBy,
     tracksExpiration: row.tracksExpiration,
   };

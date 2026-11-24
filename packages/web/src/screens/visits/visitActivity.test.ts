@@ -123,7 +123,7 @@ describe("slotActivityFor", () => {
     const [arrival] = slotActivityFor({ rows, restock, slotCode: "A3" });
 
     expect(coke).toMatchObject({ outcome: "moved", pulled: 0, now: 0, notes: ["Moved to A3"] });
-    expect(arrival).toMatchObject({ outcome: "arrived", notes: ["From A1"], added: null });
+    expect(arrival).toMatchObject({ outcome: "arrived", notes: ["From A1"], added: 4 });
   });
 
   it("an uncounted product has no numbers", () => {

@@ -420,6 +420,18 @@ describe("buildVisitSubmission: other rules", () => {
     ]);
   });
 
+  it("a move with no further input submits the units that moved", () => {
+    const rows = countRows({ [A1_CHEETOS]: "4" });
+    const restock = withAction(buildRestock({ shelves: SHELVES, rows }), rowFor(rows, "A1", "cheetos"), {
+      kind: "moved",
+      toSlotCode: "B1",
+      isSwap: false,
+    });
+    const lines = submissionOf({ rows, restock }).lines;
+
+    expect(lines.find((entry) => entry.slotCode === "B1")?.added).toBe(4);
+  });
+
   it("blank Added on an arrival is added-blank, not 0", () => {
     const rows = countRows({});
     const restock = restockWithNewStock(buildRestock({ shelves: SHELVES, rows }), {
