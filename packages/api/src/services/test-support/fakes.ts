@@ -16,10 +16,12 @@ import type {
   ProductInput,
   ProductRepository,
   Purchase,
+  PurchaseDateRange,
   PurchaseInput,
   PurchaseListQuery,
   PurchasePage,
   PurchaseRepository,
+  PurchaseSummary,
   PurchaseUpdate,
   Pack,
   PackInput,
@@ -400,15 +402,20 @@ export class FakePurchaseRepository implements PurchaseRepository {
     return row;
   }
 
+  /** Mirrors purchaseRangeFilter: live rows in the org, inclusive bounds. */
+  private inRange(orgId: string, range: PurchaseDateRange): Stored<Purchase>[] {
+    return this.rows
+      .filter((r) => r.orgId === orgId && !r.deleted)
+      .filter((r) => (range.from ? r.purchasedAt >= range.from : true))
+      .filter((r) => (range.to ? r.purchasedAt <= range.to : true));
+  }
+
   async findPageByOrg(
     orgId: string,
     query: PurchaseListQuery,
   ): Promise<PurchasePage> {
     const cursor = query.cursor;
-    const matching = this.rows
-      .filter((r) => r.orgId === orgId && !r.deleted)
-      .filter((r) => (query.from ? r.purchasedAt >= query.from : true))
-      .filter((r) => (query.to ? r.purchasedAt <= query.to : true))
+    const matching = this.inRange(orgId, query)
       // Strictly past the cursor position, mirroring the $or in
       // purchaseListFilter — including the equality-plus-id branch, so page
       // boundaries inside a shared purchasedAt are observable in tests.
@@ -423,6 +430,16 @@ export class FakePurchaseRepository implements PurchaseRepository {
       items: matching.slice(0, query.limit),
       hasMore: matching.length > query.limit,
     };
+  }
+  async findSummaryByOrg(
+    orgId: string,
+    range: PurchaseDateRange,
+  ): Promise<PurchaseSummary> {
+    const matching = this.inRange(orgId, range);
+    const spentCents = matching
+      .flatMap((r) => r.lines)
+      .reduce((sum, line) => sum + line.totalCostCents, 0);
+    return { spentCents, count: matching.length };
   }
   async findById(orgId: string, id: string): Promise<Purchase | null> {
     return (

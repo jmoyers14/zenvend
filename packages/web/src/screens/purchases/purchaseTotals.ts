@@ -13,6 +13,3 @@ export const isReceiptMismatch = <Purchase extends PurchaseLike>(
 ): purchase is Purchase & { receiptTotalCents: number } =>
   purchase.receiptTotalCents !== null &&
   purchase.receiptTotalCents !== linesTotalCentsFor(purchase);
-
-export const spentCentsFor = (purchases: readonly Pick<PurchaseLike, "lines">[]): number =>
-  purchases.reduce((sum, purchase) => sum + linesTotalCentsFor(purchase), 0);

@@ -75,6 +75,7 @@ export const buildTestAgentServices = (
       }),
       get: async (_orgId, id) =>
         (world.purchases ?? []).find((each) => each.id === id) ?? null,
+      summary: unused("purchaseService.summary"),
       create: unused("purchaseService.create"),
       update: unused("purchaseService.update"),
       remove: unused("purchaseService.remove"),

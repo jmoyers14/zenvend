@@ -391,5 +391,58 @@ describe("PurchaseService", () => {
       );
     });
   });
-});
 
+  describe("summary", () => {
+    const seedSpend = (purchasedAt: string, totalCostCents: number) =>
+      service.create(
+        ORG,
+        draft({
+          purchasedAt,
+          lines: [{ productId: cokeId, units: 1, totalCostCents }],
+        }),
+      );
+
+    it("totals every purchase in the range, past the first page", async () => {
+      for (let index = 0; index < 60; index += 1) {
+        const day = String((index % 30) + 1).padStart(2, "0");
+        await seedSpend(`2026-09-${day}T12:00:00.000Z`, 100);
+      }
+
+      expect(await service.summary(ORG, {})).toEqual({ spentCents: 6000, count: 60 });
+    });
+
+    it("reports zero for a range with no purchases", async () => {
+      await seedSpend("2026-09-20T12:00:00.000Z", 1499);
+
+      const summary = await service.summary(ORG, {
+        from: "2026-10-01T00:00:00.000Z",
+        to: "2026-10-31T23:59:59.999Z",
+      });
+
+      expect(summary).toEqual({ spentCents: 0, count: 0 });
+    });
+
+    it("includes purchases on the edges and nothing past them", async () => {
+      await seedSpend("2026-09-18T23:59:59.999Z", 1);
+      await seedSpend("2026-09-19T00:00:00.000Z", 10);
+      await seedSpend("2026-09-21T00:00:00.000Z", 100);
+      await seedSpend("2026-09-21T00:00:00.001Z", 1000);
+
+      const summary = await service.summary(ORG, {
+        from: "2026-09-19T00:00:00.000Z",
+        to: "2026-09-21T00:00:00.000Z",
+      });
+
+      expect(summary).toEqual({ spentCents: 110, count: 2 });
+    });
+
+    it("excludes removed purchases and other orgs", async () => {
+      const removed = await seedSpend("2026-09-20T12:00:00.000Z", 1000);
+      await service.remove(ORG, removed.id);
+      await seedSpend("2026-09-20T12:00:00.000Z", 300);
+
+      expect(await service.summary(ORG, {})).toEqual({ spentCents: 300, count: 1 });
+      expect(await service.summary("org_2", {})).toEqual({ spentCents: 0, count: 0 });
+    });
+  });
+});

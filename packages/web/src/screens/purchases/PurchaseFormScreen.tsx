@@ -159,7 +159,8 @@ export function PurchaseFormScreen({ purchaseId }: { purchaseId?: string }) {
   }, [error]);
 
   const handleSaved = () => {
-    queryClient.invalidateQueries({ queryKey: trpc.purchases.list.pathKey() });
+    // The whole router, so the list's spend summary refreshes with it.
+    queryClient.invalidateQueries({ queryKey: trpc.purchases.pathKey() });
     navigate({ to: "/purchases" });
   };
   const saveCallbacks = {
@@ -518,8 +519,9 @@ function DeletePurchaseSection({
   const remove = useMutation(
     trpc.purchases.remove.mutationOptions({
       onSuccess: () => {
-        // pathKey(), not queryKey(): the list is stored under an INFINITE key.
-        queryClient.invalidateQueries({ queryKey: trpc.purchases.list.pathKey() });
+        // pathKey(), not queryKey(): the list is stored under an INFINITE key,
+        // and the whole router so the spend summary refreshes with it.
+        queryClient.invalidateQueries({ queryKey: trpc.purchases.pathKey() });
         navigate({ to: "/purchases" });
       },
     }),

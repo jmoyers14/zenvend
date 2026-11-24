@@ -284,6 +284,91 @@ describe.skipIf(!ENABLED)("PurchaseRepositoryImpl against MongoDB", () => {
     });
   });
 
+  // A $match stage is not cast by Mongoose, so only a real Mongo can show the
+  // filter's values are the stored types — a wrong type matches nothing.
+  describe("findSummaryByOrg", () => {
+    const seedSpend = async (
+      purchasedAt: Date,
+      lineCents: number[],
+      over: { orgId?: string } = {},
+    ): Promise<string> => {
+      const doc = await PurchaseModel.create({
+        orgId: over.orgId ?? ORG,
+        purchasedAt,
+        vendor: "Costco",
+        lines: lineCents.map((totalCostCents) => ({
+          productId: oidHex("p1"),
+          units: 1,
+          totalCostCents,
+        })),
+        clientRequestId: `spend_${(keySeq += 1)}`,
+      });
+      return String(doc._id);
+    };
+
+    it("sums every line of every purchase and counts the purchases", async () => {
+      await seedSpend(SHARED, [1499, 699]);
+      await seedSpend(OLDER, [550]);
+
+      expect(await repo.findSummaryByOrg(ORG, {})).toEqual({
+        spentCents: 2748,
+        count: 2,
+      });
+    });
+
+    it("reports zero for a range with no purchases", async () => {
+      await seedSpend(SHARED, [1499]);
+
+      const summary = await repo.findSummaryByOrg(ORG, {
+        from: "2026-10-01T00:00:00.000Z",
+        to: "2026-10-31T23:59:59.999Z",
+      });
+
+      expect(summary).toEqual({ spentCents: 0, count: 0 });
+    });
+
+    it("includes purchases exactly on the edges and nothing past them", async () => {
+      await seedSpend(new Date("2026-09-18T23:59:59.999Z"), [1]);
+      await seedSpend(OLDER, [10]);
+      await seedSpend(SHARED, [100]);
+      await seedSpend(new Date("2026-09-20T12:00:00.001Z"), [1000]);
+
+      const summary = await repo.findSummaryByOrg(ORG, {
+        from: OLDER.toISOString(),
+        to: SHARED.toISOString(),
+      });
+
+      expect(summary).toEqual({ spentCents: 110, count: 2 });
+    });
+
+    it("agrees with the list for the same range", async () => {
+      await seedSpend(new Date("2026-09-18T12:00:00.000Z"), [5]);
+      await seedSpend(OLDER, [10, 20]);
+      await seedSpend(SHARED, [40]);
+      const range = { from: OLDER.toISOString() };
+
+      const page = await repo.findPageByOrg(ORG, { ...range, limit: 10 });
+      const summary = await repo.findSummaryByOrg(ORG, range);
+
+      const listedCents = page.items
+        .flatMap((purchase) => purchase.lines)
+        .reduce((sum, line) => sum + line.totalCostCents, 0);
+      expect(summary).toEqual({ spentCents: listedCents, count: page.items.length });
+    });
+
+    it("excludes soft-deleted purchases and other orgs", async () => {
+      const deleted = await seedSpend(SHARED, [1000]);
+      await repo.softDelete(ORG, deleted);
+      await seedSpend(SHARED, [2000], { orgId: "org_2" });
+      await seedSpend(OLDER, [300]);
+
+      expect(await repo.findSummaryByOrg(ORG, {})).toEqual({
+        spentCents: 300,
+        count: 1,
+      });
+    });
+  });
+
   // The pricing read's correctness is also entirely in its projection, and it
   // reaches for three fields the cost basis deliberately leaves behind: the
   // parent purchase's id, date and vendor.

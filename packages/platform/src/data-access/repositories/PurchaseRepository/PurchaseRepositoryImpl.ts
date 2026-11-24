@@ -5,10 +5,12 @@ import { PurchaseModel } from "../../models/Purchase.ts";
 import { toId } from "../ids.ts";
 import type {
   Purchase,
+  PurchaseDateRange,
   PurchaseInput,
   PurchaseListQuery,
   PurchasePage,
   PurchaseRepository,
+  PurchaseSummary,
   PurchaseUpdate,
 } from "./PurchaseRepository.ts";
 
@@ -33,6 +35,33 @@ type PurchaseDoc = {
 const LIST_SORT = { purchasedAt: -1, _id: -1 } as const;
 
 /**
+ * The org's live purchases inside a date range. The list and the summary both
+ * start here, so the total always covers exactly the rows the list pages through.
+ *
+ * Also a $match stage, where Mongoose casts nothing: every value must already
+ * be its stored type. orgId is stored as a string and purchasedAt as a Date.
+ */
+export function purchaseRangeFilter(
+  orgId: string,
+  range: PurchaseDateRange,
+): Record<string, unknown> {
+  const filter: Record<string, unknown> = { orgId, deletedAt: null };
+
+  const bounds: Record<string, Date> = {};
+  if (range.from) {
+    bounds.$gte = new Date(range.from);
+  }
+  if (range.to) {
+    bounds.$lte = new Date(range.to);
+  }
+  if (Object.keys(bounds).length > 0) {
+    filter.purchasedAt = bounds;
+  }
+
+  return filter;
+}
+
+/**
  * The filter for one page. Exported because it IS the correctness story and
  * there is no Mongo harness in unit tests: the $or says "strictly past the
  * cursor position", and its second branch is the only thing standing between a
@@ -46,18 +75,7 @@ export function purchaseListFilter(
   orgId: string,
   query: PurchaseListQuery,
 ): Record<string, unknown> {
-  const filter: Record<string, unknown> = { orgId, deletedAt: null };
-
-  const range: Record<string, Date> = {};
-  if (query.from) {
-    range.$gte = new Date(query.from);
-  }
-  if (query.to) {
-    range.$lte = new Date(query.to);
-  }
-  if (Object.keys(range).length > 0) {
-    filter.purchasedAt = range;
-  }
+  const filter = purchaseRangeFilter(orgId, query);
 
   const cursor = query.cursor;
   if (cursor) {
@@ -90,6 +108,26 @@ export class PurchaseRepositoryImpl implements PurchaseRepository {
       items: docs.slice(0, query.limit).map(toPurchase),
       hasMore: docs.length > query.limit,
     };
+  }
+
+  async findSummaryByOrg(
+    orgId: string,
+    range: PurchaseDateRange,
+  ): Promise<PurchaseSummary> {
+    // The inner $sum totals one purchase's lines array; the outer accumulates
+    // across purchases. A $group over no documents emits nothing at all.
+    const groups = await PurchaseModel.aggregate<PurchaseSummary>([
+      { $match: purchaseRangeFilter(orgId, range) },
+      {
+        $group: {
+          _id: null,
+          spentCents: { $sum: { $sum: "$lines.totalCostCents" } },
+          count: { $sum: 1 },
+        },
+      },
+      { $project: { _id: 0, spentCents: 1, count: 1 } },
+    ]);
+    return groups[0] ?? { spentCents: 0, count: 0 };
   }
 
   async findById(orgId: string, id: string): Promise<Purchase | null> {

@@ -1,11 +1,20 @@
 import type {
   Purchase,
   PurchaseCursor,
+  PurchaseDateRange,
   PurchaseInput,
+  PurchaseSummary,
   PurchaseUpdate,
 } from "@zenvend/platform";
 
-export type { Purchase, PurchaseCursor, PurchaseInput, PurchaseUpdate };
+export type {
+  Purchase,
+  PurchaseCursor,
+  PurchaseDateRange,
+  PurchaseInput,
+  PurchaseSummary,
+  PurchaseUpdate,
+};
 
 /** A line entered directly in sellable units. */
 export interface PurchaseDraftLine {
@@ -63,10 +72,7 @@ export type PurchaseEditDraft = Omit<PurchaseDraft, "clientRequestId">;
  */
 export const DEFAULT_PURCHASE_PAGE_SIZE = 50;
 
-export interface PurchaseListOptions {
-  /** Inclusive ISO instant bounds on purchasedAt. */
-  from?: string | null;
-  to?: string | null;
+export interface PurchaseListOptions extends PurchaseDateRange {
   limit?: number;
   /** Opaque cursor from a previous page's nextCursor. */
   cursor?: string | null;
@@ -80,6 +86,8 @@ export interface PurchaseListPage {
 
 export interface PurchaseService {
   list(orgId: string, options: PurchaseListOptions): Promise<PurchaseListPage>;
+  /** Spend and count across the whole range, not just one page of it. */
+  summary(orgId: string, range: PurchaseDateRange): Promise<PurchaseSummary>;
   get(orgId: string, id: string): Promise<Purchase | null>;
   create(orgId: string, draft: PurchaseDraft): Promise<Purchase>;
   update(orgId: string, id: string, draft: PurchaseEditDraft): Promise<Purchase>;
