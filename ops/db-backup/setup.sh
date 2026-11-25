@@ -239,7 +239,9 @@ applyPolicy() {
   fi
 }
 
-RUNBOOK="See DEPLOY.md → Database backups. Executions: gcloud run jobs executions list --job $JOB --region $REGION"
+# Backticks keep the command a code span; otherwise the Markdown renderer turns
+# its double hyphens into en dashes and the copied command fails.
+RUNBOOK="See DEPLOY.md → Database backups. Executions: \`gcloud run jobs executions list --job $JOB --region $REGION\`"
 
 cat > "$WORK_DIR/failed-policy.json" <<JSON
 {
