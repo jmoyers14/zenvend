@@ -216,9 +216,10 @@ wall, so assert the mirror still renders behind it.
 | `ios/Zenvend/Services/ZenvendAPI/ClientSupportMiddleware.swift` | header + `426` interception |
 | `ios/Zenvend/ZenvendApp.swift` | the launch/foreground check, ahead of the outbox drain |
 
-The header is `X-Zenvend-Client: ios/<CFBundleVersion>`. The `426` body is flat
-like every other REST error — `{ code, message, updateUrl }` — because the
-generated Swift client decodes it against that shape.
+The header is `X-Zenvend-Client: ios/<CFBundleVersion>`. The `426` body is the
+`UpgradeRequired` schema in `packages/api/src/schemas/clientSupport.ts` —
+`{ code, message, updateUrl }` — and every `426` in the OpenAPI document refers
+to it, so the generated Swift client decodes what the gate actually sends.
 
 **One note on the 426, since it shaped the layout above.** tRPC cannot produce
 this status: its code table has no entry mapping to 426 and unmapped codes fall

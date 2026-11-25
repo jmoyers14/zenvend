@@ -29,8 +29,8 @@ struct ClientSupportMiddleware: ClientMiddleware {
             return (response, responseBody)
         }
 
-        // The spec types this body as the generic error, which has no
-        // `updateUrl`, so it is read here rather than through the generated client.
+        // Read raw rather than through the generated `UpgradeRequired` type:
+        // this seam sits below every operation, which is why it is the only one.
         guard let responseBody else {
             await gate.requireUpdate(updateUrl: nil)
             return (response, nil)

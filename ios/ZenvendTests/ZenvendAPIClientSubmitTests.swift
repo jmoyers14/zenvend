@@ -101,7 +101,7 @@ final class ZenvendAPIClientSubmitTests: XCTestCase {
     }
 
     func testTheVersionFloorIsNeverPermanent() async {
-        let result = await outcome(status: 426, json: #"{"message":"update","code":"UPGRADE_REQUIRED"}"#)
+        let result = await outcome(status: 426, json: UpgradeRequiredStub.body)
 
         XCTAssertEqual(result, .blockedByUpdateFloor)
     }

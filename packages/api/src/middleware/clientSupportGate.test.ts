@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test";
+import { upgradeRequiredDto } from "../schemas/clientSupport.ts";
 import { buildClientSupportGate } from "./clientSupportGate.ts";
 import type { MobileClientSupportService } from "../services/MobileClientSupportService/MobileClientSupportService.ts";
 
@@ -70,10 +71,8 @@ describe("buildClientSupportGate", () => {
     const result = run(stub(true));
 
     expect(result.headers["content-type"]).toContain("application/json");
-    expect(JSON.parse(result.body ?? "{}")).toMatchObject({
-      code: "UPGRADE_REQUIRED",
-      message: expect.any(String),
-      updateUrl: UPDATE_URL,
-    });
+    // The schema is what the spec declares, so this is the wire contract.
+    const body = upgradeRequiredDto.parse(JSON.parse(result.body ?? "{}"));
+    expect(body.updateUrl).toBe(UPDATE_URL);
   });
 });

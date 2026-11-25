@@ -5,7 +5,11 @@
  * generated document emits a named component instead of an inline copy.
  */
 export { candidateDto } from "./candidate.ts";
-export { clientSupportDto } from "./clientSupport.ts";
+export {
+  clientSupportDto,
+  type UpgradeRequired,
+  upgradeRequiredDto,
+} from "./clientSupport.ts";
 export { identityDto } from "./identity.ts";
 export { locationDto } from "./location.ts";
 export { machineDto } from "./machine.ts";
