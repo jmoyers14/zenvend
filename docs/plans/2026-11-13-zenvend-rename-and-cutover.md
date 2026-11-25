@@ -156,7 +156,7 @@ Vendpire app keeps working against the renamed API.
 - [x] `bun run db:pull-prod` once, and sign in locally to the copy. Proves the debugging path before you need it.
 - [ ] `curl -X POST <zenvend-worker-url>/tasks/syncUser -d "{}"` → 403.
 - [x] Optional, MCP: set `MCP_RESOURCE_URL=https://api.zenvend.app/mcp` and `CLERK_FRONTEND_API_URL=https://clerk.zenvend.app` on `zenvend-api` (done in `deploy.sh`, #75), register that exact URL under Clerk production → Agents → MCP servers, and turn on DCR (OAuth applications → Settings). `/mcp` stays unmounted until both env vars are set.
-- [ ] After two quiet weeks: delete the `vendpire-*` services and the old secrets, remove the dev Clerk webhook that points at the old worker, delete the Vendpire iOS app, and archive the `vendpire` database (drop it once a backup is stored).
+- [ ] After two quiet weeks: delete the `vendpire-*` services and the old secrets, remove the dev Clerk webhook that points at the old worker, delete the Vendpire iOS app, and archive the `vendpire` database (drop it once a backup is stored). Backup stored 2026-11-25 under `gs://vendpire-128694-db-backups/archive/` and restore-tested; see DEPLOY.md → Database backups.
 
 ## Phase 7 — Local machine
 

@@ -342,6 +342,14 @@ overwrite them, so a compromised job cannot erase the history. Only the
 lifecycle rule deletes, and only under `daily/`; anything stored under another
 prefix (for example `archive/`) is kept until you delete it.
 
+`archive/` holds the retired pre-cutover `vendpire` database, which has had no
+writes since 2026-11-14:
+
+| Object | Form |
+|---|---|
+| `archive/vendpire-20261125T004706Z.archive.gz` | `mongodump` archive (13 collections, 258 documents); restore it like a daily one, with `--nsFrom 'vendpire.*'` |
+| `archive/vendpire-db-20261115-075324-ejson.tar.gz` | The EJSON export taken just before the cutover |
+
 ### Run a backup by hand
 
 ```sh
