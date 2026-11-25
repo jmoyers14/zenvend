@@ -30,6 +30,7 @@ REGION="us-central1"
 - Cloud Tasks + IAM Credentials are enabled by `deploy.sh` itself, along with
   the three queues and the `cloud-tasks-invoker` service account the worker's
   `/tasks/*` callbacks authenticate as. All idempotent.
+- Database backups: `ops/db-backup/setup.sh` (see Database backups below).
 
 ## First deploy
 
@@ -235,6 +236,7 @@ you rolled back to. A mismatch between services means the rollback is half-done.
 |---|---|
 | `zenvend-clerk-secret-key` | Clerk `sk_live_...` (production instance) |
 | `zenvend-mongodb-uri` | Atlas connection string, database `zenvend` |
+| `zenvend-mongodb-backup-uri` | Atlas connection string for the read-only `db-backup` user (backup job only) |
 | `zenvend-google-maps-api-key` | Places key (optional — address autocomplete) |
 | `zenvend-clerk-webhook-signing-secret` | Clerk `whsec_...` for the production instance's endpoint |
 
@@ -313,6 +315,80 @@ curl -i -X POST <api-url>/visits.create \
 
 A build at or above the floor gets `401` there instead — it cleared the gate
 and fell through to auth, which is the correct outcome.
+
+## Database backups
+
+Atlas is on the free M0 tier, which has no Atlas backups. These are the only
+ones.
+
+| | |
+|---|---|
+| What | `mongodump --gzip` of database `zenvend`, one archive per run |
+| Where | `gs://vendpire-128694-db-backups/daily/zenvend-<UTC stamp>.archive.gz` |
+| When | 03:00 America/Los_Angeles, daily (Cloud Scheduler `zenvend-db-backup-daily`) |
+| Retention | 30 days; a lifecycle rule scoped to `daily/` deletes older ones |
+| Runs as | Cloud Run job `zenvend-db-backup`, service account `db-backup` |
+| Alerts | Email on a failed run, and on no successful run in 25 hours |
+
+`ops/db-backup/setup.sh` creates all of it and is safe to re-run. Re-run
+it after changing `ops/db-backup/`, the schedule, or the retention. It
+connects as `db-backup`, an Atlas user with only `readAnyDatabase` (M0 has no
+per-database roles), whose URI is in `zenvend-mongodb-backup-uri`. To point
+the job at another secret, re-run with `BACKUP_URI_SECRET=<name>`, then remove
+the `db-backup` service account's binding from the old secret.
+
+The `db-backup` account can create objects in the bucket but not delete or
+overwrite them, so a compromised job cannot erase the history. Only the
+lifecycle rule deletes, and only under `daily/`; anything stored under another
+prefix (for example `archive/`) is kept until you delete it.
+
+### Run a backup by hand
+
+```sh
+gcloud run jobs execute zenvend-db-backup --region us-central1 --wait
+gcloud storage ls gs://vendpire-128694-db-backups/daily/ | tail -3
+```
+
+The job's log lists every collection with its document count (`done dumping
+zenvend.visits (28 documents)`). That is what a restore is checked against:
+
+```sh
+gcloud run jobs executions list --job zenvend-db-backup --region us-central1
+gcloud logging read 'resource.type="cloud_run_job" AND resource.labels.job_name="zenvend-db-backup"' \
+  --limit 50 --format 'value(textPayload)'
+```
+
+### Restore
+
+**Always restore into a new, empty database first, never over production.**
+Inspect it, then decide.
+
+```sh
+gcloud storage cp gs://vendpire-128694-db-backups/daily/zenvend-<stamp>.archive.gz .
+mongorestore --uri mongodb://localhost:27017 \
+  --archive=zenvend-<stamp>.archive.gz --gzip \
+  --nsFrom 'zenvend.*' --nsTo 'zenvend_restore.*'
+```
+
+`mongorestore` must be 100.10 or newer to work with MongoDB 8.0 (`brew upgrade
+mongodb-database-tools`). Or use the backup image, which pins 100.20.0:
+
+```sh
+docker run --rm -v "$PWD":/backup --entrypoint mongorestore \
+  us-central1-docker.pkg.dev/vendpire-128694/vendpire/db-backup:latest \
+  --uri mongodb://host.docker.internal:27017 \
+  --archive=/backup/zenvend-<stamp>.archive.gz --gzip \
+  --nsFrom 'zenvend.*' --nsTo 'zenvend_restore.*'
+```
+
+Check the restore: every collection's `countDocuments()` should match the
+`done dumping` counts in that run's log.
+
+**If production is lost:** restore into a new Atlas cluster (or a new database
+on the existing one) using the same `--nsFrom`/`--nsTo` mapping. Check the
+counts, then add a new version of `zenvend-mongodb-uri` pointing at it and
+redeploy all three services. Writes made after the backup's timestamp are gone;
+the stamp in the file name is when it was taken.
 
 ## Notes
 
