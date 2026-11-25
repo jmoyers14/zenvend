@@ -23,7 +23,8 @@ nonisolated enum ClientBuild {
         parse(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String)
     }
 
-    /// `CFBundleVersion` is permitted to be dotted (`1.2.3`).
+    /// `CFBundleVersion` is permitted to be dotted (`1.2.3`); release builds are
+    /// kept to one integer by `releaseBuildNumber` in `ios/Scripts/xc`.
     static func parse(_ raw: String?) -> Int? {
         guard let raw else { return nil }
         return Int(raw)

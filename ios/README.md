@@ -57,8 +57,10 @@ Run either scheme from Xcode with the phone selected, or use
 
 `bun run ios:testflight` archives the `Zenvend Production` scheme and uploads it
 to App Store Connect. The version comes from the root `package.json` (which
-release-please bumps) and the build number is a UTC timestamp, so any machine
-can upload without coordinating.
+release-please bumps) and the build number is a UTC timestamp as one integer,
+`YYDDDHHMM` (`263291940` is 25 Nov 2026, 19:40), so any machine can upload
+without coordinating. It must stay a plain integer: it is what forced update
+compares against `IOS_MINIMUM_BUILD`, and the app ignores a dotted one.
 
 It authenticates with an App Store Connect API key (App Manager role):
 

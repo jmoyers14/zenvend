@@ -108,6 +108,13 @@ launch() {
   xcrun simctl launch "$@" "$udid" "$bundleId"
 }
 
+# YYDDDHHMM in UTC (25 Nov 2026 19:40 → 263291940): increases with time and
+# fits the 32-bit range Apple compares. One integer, because ClientBuild reads
+# a dotted CFBundleVersion as unknown and such a build can never be walled.
+releaseBuildNumber() {
+  date -u +%y%j%H%M
+}
+
 # Install the production (Release) app on the attached phone. It is a separate app
 # from the Debug build — see BUNDLE_ID_SUFFIX in Config/*.xcconfig.
 installProduction() {
@@ -121,6 +128,7 @@ installProduction() {
     -destination "generic/platform=iOS" \
     -derivedDataPath "$DERIVED" \
     -allowProvisioningUpdates \
+    CURRENT_PROJECT_VERSION="$(releaseBuildNumber)" \
     build "$@"
   xcrun devicectl device install app --device "$udid" \
     "$DERIVED/Build/Products/Release-iphoneos/$SCHEME.app"
@@ -141,10 +149,9 @@ uploadToTestFlight() {
 
   local version
   version="$(plutil -extract version raw "$IOS_DIR/../package.json")"
-  # A UTC timestamp increases on every runner without shared state. Split in two
-  # because a single 12-digit integer overflows the 32-bit range Apple compares in.
+  # A UTC timestamp increases on every runner without shared state.
   local buildNumber
-  buildNumber="$(date -u +%Y%m%d.%H%M)"
+  buildNumber="$(releaseBuildNumber)"
   local archive="$IOS_DIR/build/$SCHEME.xcarchive"
   local auth=(
     -allowProvisioningUpdates
