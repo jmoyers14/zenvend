@@ -49,12 +49,8 @@ final class OutboxSubmitterTests: XCTestCase {
         try context.fetch(FetchDescriptor<OutboxItem>()).count
     }
 
-    /// Success is the one exit from the queue, and it leaves nothing behind:
-    /// the server is the record of what synced, and a table of sent rows grows
-    /// without bound.
-    /// A too-old build writing under a contract the server dropped is what
-    /// the floor exists to prevent, so the wall stops the drain before it
-    /// sends anything — and before it touches a row.
+    /// Stops before touching a row, so waiting out the wall never counts as a
+    /// failed attempt.
     func testAWalledDrainSendsNothingAndKeepsEveryRow() async throws {
         try setUpStore()
         insert(id: "a", countedAt: 100)
@@ -70,6 +66,9 @@ final class OutboxSubmitterTests: XCTestCase {
         XCTAssertEqual(try item("a").attemptCount, 0, "a walled drain is not a failed attempt")
     }
 
+    /// Success is the one exit from the queue, and it leaves nothing behind:
+    /// the server is the record of what synced, and a table of sent rows grows
+    /// without bound.
     func testASuccessfulSubmitRemovesTheRow() async throws {
         try setUpStore()
         insert(id: "a", countedAt: 100)

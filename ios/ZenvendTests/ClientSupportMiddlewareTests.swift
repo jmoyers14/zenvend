@@ -8,8 +8,6 @@ import XCTest
 /// server gates on and the `426` that flips the gate both run end to end.
 @MainActor
 final class ClientSupportMiddlewareTests: XCTestCase {
-    private nonisolated static let rejection = #"{"code":"UPGRADE_REQUIRED","message":"This app version is no longer supported. Please update.","updateUrl":"https://apps.apple.com/app/id123"}"#
-
     private func makeClient(
         build: Int? = 42,
         support: ClientSupport,
@@ -20,11 +18,7 @@ final class ClientSupportMiddlewareTests: XCTestCase {
                 let (status, json) = respond(request)
                 return (HTTPResponse(status: .init(code: status)), HTTPBody(json))
             },
-            middlewares: [
-                ClientSupportMiddleware(build: build) { updateUrl in
-                    await support.requireUpdate(updateUrl: updateUrl)
-                },
-            ]
+            middlewares: [ClientSupportMiddleware(build: build, gate: support)]
         )
     }
 
@@ -40,13 +34,13 @@ final class ClientSupportMiddlewareTests: XCTestCase {
 
     func testA426FlipsTheGateToRequired() async throws {
         let support = ClientSupport()
-        let client = makeClient(support: support) { _ in (426, Self.rejection) }
+        let client = makeClient(support: support) { _ in (426, UpgradeRequiredStub.body) }
 
         let outcome = await client.submit(try visitRequest())
 
         XCTAssertEqual(support.requirement, .required)
         XCTAssertTrue(support.isWallVisible)
-        XCTAssertEqual(support.updateUrl, URL(string: "https://apps.apple.com/app/id123"))
+        XCTAssertEqual(support.updateUrl, UpgradeRequiredStub.updateUrl)
         XCTAssertEqual(outcome, .blockedByUpdateFloor, "the row stays queued, never needsAttention")
     }
 
@@ -54,7 +48,7 @@ final class ClientSupportMiddlewareTests: XCTestCase {
     /// still has to see a 426, not a decode failure.
     func testA426OnAReadStillReachesTheCallerAsA426() async {
         let support = ClientSupport()
-        let client = makeClient(support: support) { _ in (426, Self.rejection) }
+        let client = makeClient(support: support) { _ in (426, UpgradeRequiredStub.body) }
 
         do {
             _ = try await client.fetchBarcodeCandidate(code: "012345678905")
@@ -116,25 +110,12 @@ final class ClientSupportMiddlewareTests: XCTestCase {
     func testTheLaunchCheckDecodesTheVerdict() async throws {
         let support = ClientSupport()
         let client = makeClient(support: support) { _ in
-            (200, #"{"updateRequirement":"recommended","updateUrl":"https://apps.apple.com/app/id123"}"#)
+            (200, #"{"updateRequirement":"recommended","updateUrl":"\#(UpgradeRequiredStub.updateUrl)"}"#)
         }
 
         let verdict = try await client.fetchClientSupport(build: 42)
 
         XCTAssertEqual(verdict.updateRequirement, .recommended)
-        XCTAssertEqual(verdict.updateUrl, URL(string: "https://apps.apple.com/app/id123"))
-    }
-}
-
-/// A transport closure runs off the main actor; this carries what it saw back.
-final class LockedBox<Value>: @unchecked Sendable {
-    private let lock = NSLock()
-    private var stored: Value
-
-    init(_ value: Value) { stored = value }
-
-    var value: Value {
-        get { lock.withLock { stored } }
-        set { lock.withLock { stored = newValue } }
+        XCTAssertEqual(verdict.updateUrl, UpgradeRequiredStub.updateUrl)
     }
 }

@@ -8,22 +8,24 @@ struct UpdateRequiredView: View {
     let updateUrl: URL?
     let onDismiss: (() -> Void)?
 
+    private var isRequired: Bool { requirement == .required }
+
     private var title: String {
-        requirement == .required ? "Update required" : "Update available"
+        isRequired ? "Update required" : "Update available"
     }
 
     private var message: String {
-        requirement == .required
+        isRequired
             ? "This version can no longer sync. Your counts are saved and will send once you update."
             : "A newer version is available."
     }
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: requirement == .required
+            Image(systemName: isRequired
                 ? "exclamationmark.triangle.fill"
                 : "arrow.down.circle.fill")
-                .foregroundStyle(requirement == .required ? Color.warningAccent : .action)
+                .foregroundStyle(isRequired ? Color.warningAccent : .action)
                 .font(.title2)
 
             VStack(alignment: .leading, spacing: 4) {

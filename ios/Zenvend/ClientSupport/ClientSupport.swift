@@ -51,6 +51,8 @@ final class ClientSupport {
 
     var isDismissible: Bool { requirement == .recommended }
 
+    var isUpdateRequired: Bool { requirement == .required }
+
     /// A changed verdict resurfaces a dismissed nudge — escalation has to reach
     /// someone who waved the first one away.
     func apply(_ requirement: UpdateRequirement, updateUrl: URL?) {

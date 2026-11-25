@@ -26,9 +26,7 @@ struct ZenvendApp: App {
         // client-support stamp is what lets the server 426 an old build.
         let api = ZenvendAPIClient(middlewares: [
             AuthTokenMiddleware(),
-            ClientSupportMiddleware(build: ClientBuild.current) { updateUrl in
-                await clientSupport.requireUpdate(updateUrl: updateUrl)
-            },
+            ClientSupportMiddleware(build: ClientBuild.current, gate: clientSupport),
         ])
         self.api = api
         _refresher = State(
@@ -41,7 +39,7 @@ struct ZenvendApp: App {
             initialValue: OutboxSubmitter(
                 api: api,
                 context: container.mainContext,
-                isUpdateRequired: { clientSupport.requirement == .required }
+                isUpdateRequired: { clientSupport.isUpdateRequired }
             )
         )
     }

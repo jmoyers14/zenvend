@@ -37,8 +37,7 @@ final class OutboxSubmitter {
     }
 
     func drain() async {
-        // A walled build must not write under a contract the server has
-        // dropped. Rows and drafts stay put and send after the update.
+        // A walled build must not submit; rows and drafts wait for the update.
         guard !isUpdateRequired() else { return }
         // Launch and foreground fire within milliseconds, same as the mirror.
         guard state != .draining else { return }

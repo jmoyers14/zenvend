@@ -122,15 +122,13 @@ final class OfflineDrillTests: XCTestCase {
         let walledApi = ZenvendAPIClient(
             transport: StubTransport { _, _ in
                 requests.value += 1
-                return (HTTPResponse(status: .init(code: 426)), HTTPBody(#"{"code":"UPGRADE_REQUIRED","message":"Update.","updateUrl":"https://apps.apple.com/app/id123"}"#))
+                return (HTTPResponse(status: .upgradeRequired), HTTPBody(UpgradeRequiredStub.body))
             },
-            middlewares: [
-                ClientSupportMiddleware(build: 42) { url in await support.requireUpdate(updateUrl: url) },
-            ]
+            middlewares: [ClientSupportMiddleware(build: 42, gate: support)]
         )
         let submitter = OutboxSubmitter(
             api: walledApi, context: context,
-            isUpdateRequired: { support.requirement == .required },
+            isUpdateRequired: { support.isUpdateRequired },
             now: { self.afternoon }, jitter: { 1 }
         )
 

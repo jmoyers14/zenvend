@@ -10,7 +10,7 @@ import OpenAPIRuntime
 struct ClientSupportMiddleware: ClientMiddleware {
     /// `nil` sends no header, which the server passes through rather than guess.
     let build: Int?
-    let onUpdateRequired: @Sendable (_ updateUrl: URL?) async -> Void
+    let gate: ClientSupport
 
     func intercept(
         _ request: HTTPRequest,
@@ -25,18 +25,18 @@ struct ClientSupportMiddleware: ClientMiddleware {
         }
 
         let (response, responseBody) = try await next(request, body, baseURL)
-        guard response.status.code == 426 else {
+        guard response.status == .upgradeRequired else {
             return (response, responseBody)
         }
 
         // The spec types this body as the generic error, which has no
         // `updateUrl`, so it is read here rather than through the generated client.
         guard let responseBody else {
-            await onUpdateRequired(nil)
+            await gate.requireUpdate(updateUrl: nil)
             return (response, nil)
         }
         let data = try await Data(collecting: responseBody, upTo: 64 * 1024)
-        await onUpdateRequired(Self.updateUrl(in: data))
+        await gate.requireUpdate(updateUrl: Self.updateUrl(in: data))
         return (response, HTTPBody(data))
     }
 
