@@ -34,4 +34,12 @@ describe("loadMobileConfig", () => {
       "https://testflight.apple.com/join/abc123",
     );
   });
+
+  it("accepts the TestFlight app link production uses", () => {
+    process.env.IOS_UPDATE_URL = "itms-beta://beta.itunes.apple.com/v1/app/6835181650";
+
+    expect(loadMobileConfig().iosUpdateUrl).toBe(
+      "itms-beta://beta.itunes.apple.com/v1/app/6835181650",
+    );
+  });
 });
