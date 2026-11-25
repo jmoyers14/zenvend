@@ -277,6 +277,10 @@ without shipping an app. Mechanism: `docs/diagrams/forced-update.md`.
 | `IOS_RECOMMENDED_BUILD` | `0` | Builds below this get a dismissible nudge |
 | `IOS_UPDATE_URL` | App Store listing | Where the wall sends people — repoint at TestFlight without a release |
 
+The numbers are App Store Connect build numbers, `YYDDDHHMM` in UTC (for
+example `263291940`), as `ios:testflight` and `ios:install-production` stamp
+them. Copy the value from App Store Connect rather than working it out.
+
 **Both default to `0`, which supports every build.** Leave them unset and the
 whole mechanism is inert. Raising either one is a deliberate act and takes only
 an api redeploy.
