@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useEffect, useId, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 import type { ApiProductPricing } from "../../apiTypes.ts";
 import {
   Badge,
@@ -20,7 +20,6 @@ import {
   SectionDivider,
   Switch,
   TextInput,
-  useFormDraft,
 } from "../../ui.tsx";
 import { formatShortDate } from "../../utils/dates.ts";
 import {
@@ -30,89 +29,48 @@ import {
   parseDollarsToCents,
 } from "../../utils/money.ts";
 import { queryClient, trpc, trpcClient } from "../../trpc.ts";
+import { useRecordForm } from "../useRecordForm.ts";
 import { CatalogSearch } from "./CatalogSearch.tsx";
 import { buildPricingDisplay } from "./pricing.ts";
 import {
   buildProductInput,
   catalogNameFor,
   categorySuggestionsFor,
+  draftFor,
   EMPTY_PRODUCT_DRAFT,
-  type ProductDraft,
-  type ProductFieldErrors,
+  priceInputFor,
 } from "./productForm.ts";
 
 const FORM_ID = "product-form";
 
-/** Two decimals, so a loaded $2 reads "2.00" like the mockup, not "2". */
-const priceInputFor = (cents: number) => (cents / 100).toFixed(2);
-
 /** Create + edit form: `productId` present means edit. */
 export function ProductFormScreen({ productId }: { productId?: string }) {
-  const navigate = useNavigate();
-  const isEditing = Boolean(productId);
-  const { draft, set, load, discard, isDirty } = useFormDraft<ProductDraft>(EMPTY_PRODUCT_DRAFT);
-  const [errors, setErrors] = useState<ProductFieldErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
   const [upcNote, setUpcNote] = useState<string | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
-  // Loaded once: a refetch on window focus must not wipe edits in progress.
-  const [hasLoaded, setHasLoaded] = useState(false);
   const categoryListId = useId();
 
   const existing = useQuery({
     ...trpc.products.get.queryOptions({ id: productId ?? "" }),
-    enabled: isEditing,
+    enabled: Boolean(productId),
   });
   // Edit only: a product being created has no purchase history by definition.
   const pricingList = useQuery({
     ...trpc.products.pricing.queryOptions(),
-    enabled: isEditing,
+    enabled: Boolean(productId),
   });
   const products = useQuery(trpc.products.list.queryOptions());
 
-  useEffect(() => {
-    const product = existing.data;
-    if (!product || hasLoaded) {
-      return;
-    }
-    setHasLoaded(true);
-    load({
-      name: product.name,
-      category: product.category,
-      upc: product.upc ?? "",
-      taxClass: product.taxClass ?? "",
-      price: priceInputFor(product.defaultPriceCents),
-      imageUrl: product.imageUrl,
-      isActive: product.active,
-      tracksExpiration: product.tracksExpiration,
-    });
-  }, [existing.data, hasLoaded, load]);
-
-  const handleSaved = () => {
-    queryClient.invalidateQueries({ queryKey: trpc.products.list.queryKey() });
-    if (productId) {
-      queryClient.invalidateQueries({ queryKey: trpc.products.get.queryKey({ id: productId }) });
-    }
-    navigate({ to: "/products" });
-  };
-  const saveCallbacks = {
-    onSuccess: handleSaved,
-    onError: (error: { message: string }) => setFormError(error.message),
-  };
-  const create = useMutation(trpc.products.create.mutationOptions(saveCallbacks));
-  const update = useMutation(trpc.products.update.mutationOptions(saveCallbacks));
-
-  // An edit clears that field's error, so a fix doesn't keep showing it.
-  const editDraft = (patch: Partial<ProductDraft>) => {
-    set(patch);
-    setErrors((current) => {
-      const next = { ...current };
-      for (const key of Object.keys(patch)) {
-        delete next[key as keyof ProductFieldErrors];
-      }
-      return next;
-    });
-  };
+  const form = useRecordForm({
+    recordId: productId,
+    record: existing.data,
+    emptyDraft: EMPTY_PRODUCT_DRAFT,
+    draftFor,
+    listPath: "/products",
+    savedQueryKey: trpc.products.pathKey(),
+  });
+  const { draft, errors, editDraft, isEditing } = form;
+  const create = useMutation(trpc.products.create.mutationOptions(form.saveCallbacks));
+  const update = useMutation(trpc.products.update.mutationOptions(form.saveCallbacks));
 
   const lookUpUpc = async () => {
     setUpcNote(null);
@@ -138,10 +96,10 @@ export function ProductFormScreen({ productId }: { productId?: string }) {
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    setFormError(null);
+    form.setFormError(null);
     const result = buildProductInput(draft);
     if ("errors" in result) {
-      setErrors(result.errors);
+      form.setErrors(result.errors);
       return;
     }
     if (productId) {
@@ -149,16 +107,6 @@ export function ProductFormScreen({ productId }: { productId?: string }) {
       return;
     }
     create.mutate(result.input);
-  };
-
-  const handleDismiss = () => {
-    if (!isEditing) {
-      navigate({ to: "/products" });
-      return;
-    }
-    discard();
-    setErrors({});
-    setFormError(null);
   };
 
   const pricing = pricingList.data?.find((row) => row.productId === productId);
@@ -198,7 +146,12 @@ export function ProductFormScreen({ productId }: { productId?: string }) {
           }
         />
 
-        <ErrorNote message={formError} />
+        <ErrorNote
+          message={existing.error ? `Couldn't load this product: ${existing.error.message}` : null}
+        />
+        {isEditing && existing.isLoading ? (
+          <p className="text-body text-muted-strong">Loading…</p>
+        ) : null}
 
         {/* Creating only: on an existing product a pick would overwrite its name, UPC and photo. */}
         {isEditing ? null : (
@@ -209,124 +162,132 @@ export function ProductFormScreen({ productId }: { productId?: string }) {
           />
         )}
 
-        <form id={FORM_ID} onSubmit={handleSubmit} noValidate>
-          <FormSection
-            title="Basics"
-            description="What the product is called and how you find it when restocking."
-          >
-            <div className="grid gap-5 sm:grid-cols-[120px_minmax(0,1fr)]">
-              <ProductPhoto
-                imageUrl={draft.imageUrl}
-                name={draft.name}
-                emptyHint={isEditing ? "Look up adds one" : "Fill from catalog or Look up adds one"}
-                onRemove={() => editDraft({ imageUrl: null })}
-              />
-              <div className="grid gap-5">
-                <Field
-                  label="Name"
-                  hint='Include the size, e.g. "7up - 12 oz", so similar products stay distinct.'
-                  error={errors.name}
-                >
-                  <TextInput value={draft.name} onChange={(event) => editDraft({ name: event.target.value })} />
-                </Field>
-                <Field
-                  label="Category"
-                  hint="Pick one you already use, or type a new one."
-                  error={errors.category}
-                >
-                  <TextInput
-                    list={categoryListId}
-                    autoComplete="off"
-                    placeholder="e.g. Chips"
-                    value={draft.category}
-                    onChange={(event) => editDraft({ category: event.target.value })}
-                  />
-                </Field>
-                <datalist id={categoryListId}>
-                  {categorySuggestionsFor(products.data ?? []).map((category) => (
-                    <option key={category} value={category} />
-                  ))}
-                </datalist>
-              </div>
-            </div>
-            <SectionDivider />
-            <Field
-              label="UPC"
-              isOptional
-              // A lookup miss is information, not a validation error.
-              hint={upcNote ?? "Scan it or type it in, then Look up to pull the name and photo."}
+        {form.canShowForm ? (
+          <form id={FORM_ID} onSubmit={handleSubmit} noValidate>
+            <FormSection
+              title="Basics"
+              description="What the product is called and how you find it when restocking."
             >
-              <div className="flex gap-2">
-                <TextInput
-                  inputMode="numeric"
-                  autoComplete="off"
-                  className="font-mono tabular-nums"
-                  placeholder="e.g. 078000113464"
-                  value={draft.upc}
-                  onChange={(event) => {
-                    setUpcNote(null);
-                    editDraft({ upc: event.target.value });
-                  }}
+              <div className="grid gap-5 sm:grid-cols-[120px_minmax(0,1fr)]">
+                <ProductPhoto
+                  imageUrl={draft.imageUrl}
+                  name={draft.name}
+                  emptyHint={isEditing ? "Look up adds one" : "Fill from catalog or Look up adds one"}
+                  onRemove={() => editDraft({ imageUrl: null })}
                 />
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  onClick={lookUpUpc}
-                  disabled={isLookingUp || draft.upc.trim() === ""}
-                >
-                  {isLookingUp ? "Looking up…" : "Look up"}
-                </Button>
+                <div className="grid gap-5">
+                  <Field
+                    label="Name"
+                    hint='Include the size, e.g. "7up - 12 oz", so similar products stay distinct.'
+                    error={errors.name}
+                  >
+                    <TextInput value={draft.name} onChange={(event) => editDraft({ name: event.target.value })} />
+                  </Field>
+                  <Field
+                    label="Category"
+                    hint="Pick one you already use, or type a new one."
+                    error={errors.category}
+                  >
+                    <TextInput
+                      list={categoryListId}
+                      autoComplete="off"
+                      placeholder="e.g. Chips"
+                      value={draft.category}
+                      onChange={(event) => editDraft({ category: event.target.value })}
+                    />
+                  </Field>
+                  <datalist id={categoryListId}>
+                    {categorySuggestionsFor(products.data ?? []).map((category) => (
+                      <option key={category} value={category} />
+                    ))}
+                  </datalist>
+                </div>
               </div>
-            </Field>
-          </FormSection>
+              <SectionDivider />
+              <Field
+                label="UPC"
+                isOptional
+                // A lookup miss is information, not a validation error.
+                hint={upcNote ?? "Scan it or type it in, then Look up to pull the name and photo."}
+              >
+                <div className="flex gap-2">
+                  <TextInput
+                    inputMode="numeric"
+                    autoComplete="off"
+                    className="font-mono tabular-nums"
+                    placeholder="e.g. 078000113464"
+                    value={draft.upc}
+                    onChange={(event) => {
+                      setUpcNote(null);
+                      editDraft({ upc: event.target.value });
+                    }}
+                  />
+                  <Button
+                    variant="secondary"
+                    size="lg"
+                    onClick={lookUpUpc}
+                    disabled={isLookingUp || draft.upc.trim() === ""}
+                  >
+                    {isLookingUp ? "Looking up…" : "Look up"}
+                  </Button>
+                </div>
+              </Field>
+            </FormSection>
 
-          <FormSection
-            title="Pricing"
-            description="The default price for slots with this product. You can still change it per slot."
-          >
-            <PricingFields
-              price={draft.price}
-              error={errors.price}
-              pricing={pricing}
-              onPriceChange={(price) => editDraft({ price })}
-            />
-          </FormSection>
-
-          <FormSection title="Rules" description="Tax, and how this product behaves during visits.">
-            <Field label="Tax class" isOptional hint="Used for California vending tax rules.">
-              <TextInput
-                value={draft.taxClass}
-                onChange={(event) => editDraft({ taxClass: event.target.value })}
+            <FormSection
+              title="Pricing"
+              description="The default price for slots with this product. You can still change it per slot."
+            >
+              <PricingFields
+                price={draft.price}
+                error={errors.price}
+                pricing={pricing}
+                onPriceChange={(price) => editDraft({ price })}
               />
-            </Field>
-            <SectionDivider />
-            <Switch
-              title="Track expiration dates"
-              description="On for anything with a printed best-by date. Turn it off for gum, bulk candy and non-food, and visits will stop asking for a date."
-              isChecked={draft.tracksExpiration}
-              onChange={(tracksExpiration) => editDraft({ tracksExpiration })}
-            />
-            <SectionDivider />
-            <Switch
-              title="Active"
-              description="Inactive products stay in history and reports but drop out of pickers."
-              isChecked={draft.isActive}
-              onChange={(isActive) => editDraft({ isActive })}
-            />
-          </FormSection>
-        </form>
+            </FormSection>
+
+            <FormSection title="Rules" description="Tax, and how this product behaves during visits.">
+              <Field label="Tax class" isOptional hint="Used for California vending tax rules.">
+                <TextInput
+                  value={draft.taxClass}
+                  onChange={(event) => editDraft({ taxClass: event.target.value })}
+                />
+              </Field>
+              <SectionDivider />
+              <Switch
+                title="Track expiration dates"
+                description="On for anything with a printed best-by date. Turn it off for gum, bulk candy and non-food, and visits will stop asking for a date."
+                isChecked={draft.tracksExpiration}
+                onChange={(tracksExpiration) => editDraft({ tracksExpiration })}
+              />
+              <SectionDivider />
+              <Switch
+                title="Active"
+                description="Inactive products stay in history and reports but drop out of pickers."
+                isChecked={draft.isActive}
+                onChange={(isActive) => editDraft({ isActive })}
+              />
+            </FormSection>
+          </form>
+        ) : null}
+
+        {form.formError ? (
+          <div ref={form.formErrorRef} className="scroll-mb-28">
+            <ErrorNote message={form.formError} />
+          </div>
+        ) : null}
 
         {productId && existing.data ? (
           <DeleteProductSection productId={productId} productName={existing.data.name} />
         ) : null}
       </Page>
       <SaveBar
-        isDirty={isDirty}
+        isDirty={form.isDirty}
         // "All changes saved" would be untrue for a product that doesn't exist yet.
-        summary={!isEditing && !isDirty ? "Nothing entered yet" : undefined}
+        summary={!isEditing && !form.isDirty ? "Nothing entered yet" : undefined}
         saveLabel={isEditing ? "Save changes" : "Create product"}
         dismissal={isEditing ? "discard" : "cancel"}
-        onDismiss={handleDismiss}
+        onDismiss={form.handleDismiss}
         formId={FORM_ID}
         isSaving={create.isPending || update.isPending}
       />

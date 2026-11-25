@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { type FormEvent, useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import {
   Badge,
   DecimalInput,
@@ -20,9 +20,9 @@ import {
   Switch,
   TextArea,
   TextInput,
-  useFormDraft,
 } from "../../ui.tsx";
 import { queryClient, trpc } from "../../trpc.ts";
+import { useRecordForm } from "../useRecordForm.ts";
 import { AddressAutocomplete } from "./AddressAutocomplete.tsx";
 import {
   buildLocationInput,
@@ -38,68 +38,38 @@ const FORM_ID = "location-form";
 
 /** Create + edit form: `locationId` present means edit. */
 export function LocationFormScreen({ locationId }: { locationId?: string }) {
-  const navigate = useNavigate();
-  const isEditing = Boolean(locationId);
-  const { draft, set, load, discard, isDirty } =
-    useFormDraft<LocationDraft>(EMPTY_LOCATION_DRAFT);
-  const [errors, setErrors] = useState<LocationFieldErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
-  // Loaded once: a refetch on window focus must not wipe edits in progress.
-  const [hasLoaded, setHasLoaded] = useState(false);
-
   const existing = useQuery({
     ...trpc.locations.get.queryOptions({ id: locationId ?? "" }),
-    enabled: isEditing,
+    enabled: Boolean(locationId),
   });
+  const form = useRecordForm({
+    recordId: locationId,
+    record: existing.data,
+    emptyDraft: EMPTY_LOCATION_DRAFT,
+    draftFor,
+    listPath: "/locations",
+    savedQueryKey: trpc.locations.pathKey(),
+  });
+  const { draft, errors, isEditing } = form;
+  const create = useMutation(trpc.locations.create.mutationOptions(form.saveCallbacks));
+  const update = useMutation(trpc.locations.update.mutationOptions(form.saveCallbacks));
 
-  useEffect(() => {
-    const location = existing.data;
-    if (!location || hasLoaded) {
-      return;
-    }
-    setHasLoaded(true);
-    load(draftFor(location));
-  }, [existing.data, hasLoaded, load]);
-
-  const handleSaved = () => {
-    queryClient.invalidateQueries({ queryKey: trpc.locations.list.queryKey() });
-    if (locationId) {
-      queryClient.invalidateQueries({ queryKey: trpc.locations.get.queryKey({ id: locationId }) });
-    }
-    navigate({ to: "/locations" });
-  };
-  const saveCallbacks = {
-    onSuccess: handleSaved,
-    onError: (error: { message: string }) => setFormError(error.message),
-  };
-  const create = useMutation(trpc.locations.create.mutationOptions(saveCallbacks));
-  const update = useMutation(trpc.locations.update.mutationOptions(saveCallbacks));
-
-  // An edit clears that field's error, so a fix doesn't keep showing it. A new
-  // commission type clears both amount errors, or switching back would bring one back.
+  // A new commission type clears both amount errors, or switching back would bring one back.
   const editDraft = (patch: Partial<LocationDraft>) => {
-    set(patch);
-    const clearedKeys: string[] =
-      "commissionType" in patch
-        ? [...Object.keys(patch), "commissionPercent", "commissionFlat"]
-        : Object.keys(patch);
-    setErrors((current) => {
-      const next = { ...current };
-      for (const key of clearedKeys) {
-        delete next[key as keyof LocationFieldErrors];
-      }
-      return next;
-    });
+    form.editDraft(patch);
+    if ("commissionType" in patch) {
+      form.clearErrors(["commissionPercent", "commissionFlat"]);
+    }
   };
   // A hand edit to any address part means the pinned coordinates no longer match.
   const editAddress = (patch: Partial<LocationDraft>) => editDraft({ ...patch, geo: null });
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    setFormError(null);
+    form.setFormError(null);
     const result = buildLocationInput(draft);
     if ("errors" in result) {
-      setErrors(result.errors);
+      form.setErrors(result.errors);
       return;
     }
     if (locationId) {
@@ -107,16 +77,6 @@ export function LocationFormScreen({ locationId }: { locationId?: string }) {
       return;
     }
     create.mutate(result.input);
-  };
-
-  const handleDismiss = () => {
-    if (!isEditing) {
-      navigate({ to: "/locations" });
-      return;
-    }
-    discard();
-    setErrors({});
-    setFormError(null);
   };
 
   const savedLocation = existing.data;
@@ -153,120 +113,130 @@ export function LocationFormScreen({ locationId }: { locationId?: string }) {
         <ErrorNote
           message={existing.error ? `Couldn't load this location: ${existing.error.message}` : null}
         />
-        <ErrorNote message={formError} />
+        {isEditing && existing.isLoading ? (
+          <p className="text-body text-muted-strong">Loading…</p>
+        ) : null}
 
-        <form id={FORM_ID} onSubmit={handleSubmit} noValidate>
-          <FormSection title="Location" description="What you call this spot.">
-            <Field label="Name" error={errors.name} hint="e.g. Westside Laundromat">
-              <TextInput
-                value={draft.name}
-                onChange={(event) => editDraft({ name: event.target.value })}
+        {form.canShowForm ? (
+          <form id={FORM_ID} onSubmit={handleSubmit} noValidate>
+            <FormSection title="Location" description="What you call this spot.">
+              <Field label="Name" error={errors.name} hint="e.g. Westside Laundromat">
+                <TextInput
+                  value={draft.name}
+                  onChange={(event) => editDraft({ name: event.target.value })}
+                />
+              </Field>
+              <SectionDivider />
+              <Switch
+                title="Active"
+                description="Inactive locations stay in history and reports but drop out of pickers."
+                isChecked={draft.isActive}
+                onChange={(isActive) => editDraft({ isActive })}
               />
-            </Field>
-            <SectionDivider />
-            <Switch
-              title="Active"
-              description="Inactive locations stay in history and reports but drop out of pickers."
-              isChecked={draft.isActive}
-              onChange={(isActive) => editDraft({ isActive })}
-            />
-          </FormSection>
+            </FormSection>
 
-          <FormSection
-            title="Address"
-            description="Start typing the street and pick a suggestion to fill the rest."
-          >
-            <Field label="Street" isOptional>
-              <AddressAutocomplete
-                value={draft.line1}
-                onChange={(line1) => editAddress({ line1 })}
-                onResolved={(address) =>
-                  editDraft({
-                    line1: address.line1 ?? "",
-                    city: address.city ?? "",
-                    state: address.state ?? "",
-                    zip: address.zip ?? "",
-                    geo: address.geo,
-                  })
-                }
-              />
-            </Field>
-            <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_96px_140px]">
-              <Field label="City" isOptional>
-                <TextInput
-                  value={draft.city}
-                  onChange={(event) => editAddress({ city: event.target.value })}
+            <FormSection
+              title="Address"
+              description="Start typing the street and pick a suggestion to fill the rest."
+            >
+              <Field label="Street" isOptional>
+                <AddressAutocomplete
+                  value={draft.line1}
+                  onChange={(line1) => editAddress({ line1 })}
+                  onResolved={(address) =>
+                    editDraft({
+                      line1: address.line1 ?? "",
+                      city: address.city ?? "",
+                      state: address.state ?? "",
+                      zip: address.zip ?? "",
+                      geo: address.geo,
+                    })
+                  }
                 />
               </Field>
-              <Field label="State" isOptional>
-                <TextInput
-                  value={draft.state}
-                  onChange={(event) => editAddress({ state: event.target.value })}
-                />
-              </Field>
-              <Field label="ZIP" isOptional>
-                <TextInput
-                  inputMode="numeric"
-                  className="font-mono tabular-nums"
-                  value={draft.zip}
-                  onChange={(event) => editAddress({ zip: event.target.value })}
-                />
-              </Field>
-            </div>
-          </FormSection>
+              <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_96px_140px]">
+                <Field label="City" isOptional>
+                  <TextInput
+                    value={draft.city}
+                    onChange={(event) => editAddress({ city: event.target.value })}
+                  />
+                </Field>
+                <Field label="State" isOptional>
+                  <TextInput
+                    value={draft.state}
+                    onChange={(event) => editAddress({ state: event.target.value })}
+                  />
+                </Field>
+                <Field label="ZIP" isOptional>
+                  <TextInput
+                    inputMode="numeric"
+                    className="font-mono tabular-nums"
+                    value={draft.zip}
+                    onChange={(event) => editAddress({ zip: event.target.value })}
+                  />
+                </Field>
+              </div>
+            </FormSection>
 
-          <FormSection title="Contact" description="Who to call about access or a problem with a machine.">
-            <Field label="Contact name" isOptional>
-              <TextInput
-                value={draft.contactName}
-                onChange={(event) => editDraft({ contactName: event.target.value })}
-              />
-            </Field>
-            <FieldRow>
-              <Field label="Phone" isOptional>
+            <FormSection title="Contact" description="Who to call about access or a problem with a machine.">
+              <Field label="Contact name" isOptional>
                 <TextInput
-                  type="tel"
-                  value={draft.contactPhone}
-                  onChange={(event) => editDraft({ contactPhone: event.target.value })}
+                  value={draft.contactName}
+                  onChange={(event) => editDraft({ contactName: event.target.value })}
                 />
               </Field>
-              <Field label="Email" isOptional>
-                <TextInput
-                  type="email"
-                  value={draft.contactEmail}
-                  onChange={(event) => editDraft({ contactEmail: event.target.value })}
+              <FieldRow>
+                <Field label="Phone" isOptional>
+                  <TextInput
+                    type="tel"
+                    value={draft.contactPhone}
+                    onChange={(event) => editDraft({ contactPhone: event.target.value })}
+                  />
+                </Field>
+                <Field label="Email" isOptional>
+                  <TextInput
+                    type="email"
+                    value={draft.contactEmail}
+                    onChange={(event) => editDraft({ contactEmail: event.target.value })}
+                  />
+                </Field>
+              </FieldRow>
+            </FormSection>
+
+            <FormSection title="Commission" description="What you pay the location for hosting your machines.">
+              <CommissionFields draft={draft} errors={errors} onChange={editDraft} />
+            </FormSection>
+
+            <FormSection title="Notes" description="Anything worth remembering about this spot.">
+              <Field label="Notes" isOptional>
+                <TextArea
+                  rows={3}
+                  placeholder="e.g. Key is with the front desk; machines are by the back door"
+                  value={draft.notes}
+                  onChange={(event) => editDraft({ notes: event.target.value })}
                 />
               </Field>
-            </FieldRow>
-          </FormSection>
+            </FormSection>
+          </form>
+        ) : null}
 
-          <FormSection title="Commission" description="What you pay the location for hosting your machines.">
-            <CommissionFields draft={draft} errors={errors} onChange={editDraft} />
-          </FormSection>
-
-          <FormSection title="Notes" description="Anything worth remembering about this spot.">
-            <Field label="Notes" isOptional>
-              <TextArea
-                rows={3}
-                placeholder="e.g. Key is with the front desk; machines are by the back door"
-                value={draft.notes}
-                onChange={(event) => editDraft({ notes: event.target.value })}
-              />
-            </Field>
-          </FormSection>
-        </form>
+        {form.formError ? (
+          <div ref={form.formErrorRef} className="scroll-mb-28">
+            <ErrorNote message={form.formError} />
+          </div>
+        ) : null}
 
         {locationId && savedLocation ? (
           <DeleteLocationSection locationId={locationId} locationName={savedLocation.name} />
         ) : null}
       </Page>
       <SaveBar
-        isDirty={isDirty}
+        isDirty={form.isDirty}
         // "All changes saved" would be untrue for a location that doesn't exist yet.
-        summary={!isEditing && !isDirty ? "Nothing entered yet" : undefined}
+        summary={!isEditing && !form.isDirty ? "Nothing entered yet" : undefined}
         saveLabel={isEditing ? "Save changes" : "Create location"}
         dismissal={isEditing ? "discard" : "cancel"}
-        onDismiss={handleDismiss}
+        onDismiss={form.handleDismiss}
         formId={FORM_ID}
         isSaving={create.isPending || update.isPending}
       />

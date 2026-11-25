@@ -100,10 +100,16 @@ export type MachineFieldErrors = Partial<
  * Errors that belong to another field's choice: turning the reader or the
  * template off makes its follow-up field's error moot.
  */
-export const DEPENDENT_ERROR_KEYS: Partial<Record<keyof MachineDraft, keyof MachineFieldErrors>> = {
+const DEPENDENT_ERROR_KEYS: Partial<Record<keyof MachineDraft, keyof MachineFieldErrors>> = {
   readerProvider: "readerDeviceId",
   shouldSaveAsTemplate: "newTemplateName",
 };
+
+/** The follow-up errors an edit to these fields makes moot. */
+export const dependentErrorKeysFor = (
+  patch: Partial<MachineDraft>,
+): (keyof MachineFieldErrors)[] =>
+  (Object.keys(patch) as (keyof MachineDraft)[]).flatMap((key) => DEPENDENT_ERROR_KEYS[key] ?? []);
 
 /** Every field that's wrong, each under its own key. Empty when the draft can save. */
 export const fieldErrorsFor = (draft: MachineDraft): MachineFieldErrors => ({
