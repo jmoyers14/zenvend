@@ -40,10 +40,11 @@ struct ClientSupportMiddleware: ClientMiddleware {
         return (response, HTTPBody(data))
     }
 
+    /// The generated type, so this parse follows the spec. A body that fails to
+    /// decode still walls, just without a link.
     private static func updateUrl(in data: Data) -> URL? {
-        struct Rejection: Decodable { let updateUrl: String? }
-        let rejection = try? JSONDecoder().decode(Rejection.self, from: data)
-        return rejection?.updateUrl.flatMap(URL.init(string:))
+        let rejection = try? JSONDecoder().decode(Components.Schemas.UpgradeRequired.self, from: data)
+        return rejection.flatMap { URL(string: $0.updateUrl) }
     }
 }
 
