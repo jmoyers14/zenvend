@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/jmoyers14/zenvend/compare/v0.18.0...v0.18.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **ios:** tolerate unknown enum values on the read path ([#92](https://github.com/jmoyers14/zenvend/issues/92)) ([bdbf4e0](https://github.com/jmoyers14/zenvend/commit/bdbf4e017d255142e7d90c5fd12e5d66e8bf9030))
+
 ## [0.18.0](https://github.com/jmoyers14/zenvend/compare/v0.17.0...v0.18.0) (2026-11-25)
 
 
