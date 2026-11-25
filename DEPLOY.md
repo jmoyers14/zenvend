@@ -275,7 +275,7 @@ without shipping an app. Mechanism: `docs/diagrams/forced-update.md`.
 |---|---|---|
 | `IOS_MINIMUM_BUILD` | `0` | Builds below this get a non-dismissible update wall, and `426` on every write |
 | `IOS_RECOMMENDED_BUILD` | `0` | Builds below this get a dismissible nudge |
-| `IOS_UPDATE_URL` | App Store listing | Where the wall sends people — repoint at TestFlight without a release |
+| `IOS_UPDATE_URL` | App Store listing | Where the wall sends people. Production is `itms-beta://beta.itunes.apple.com/v1/app/6835181650`, which opens the app in TestFlight, since internal testing has no public link |
 
 The numbers are App Store Connect build numbers, `YYDDDHHMM` in UTC (for
 example `263291940`), as `ios:testflight` and `ios:install-production` stamp
