@@ -141,6 +141,27 @@ else
   echo "No PostHog server key found — deploying without server-side analytics."
 fi
 
+# ── iOS support floor (optional) ─────────────────────────────────────────────
+# --set-env-vars replaces the api's whole env, so a floor set any other way is
+# reset to 0 by the next deploy. The GitHub `production` environment's variables
+# are the source of truth: CI passes them in, a laptop deploy asks gh for them.
+iosFloorValue() {
+  local name="$1"
+  if [ -n "${!name:-}" ]; then
+    echo "${!name}"
+    return
+  fi
+  [ -n "${CI:-}" ] && return
+  gh variable get "$name" --env production 2>/dev/null || true
+}
+for name in IOS_MINIMUM_BUILD IOS_RECOMMENDED_BUILD IOS_UPDATE_URL; do
+  value="$(iosFloorValue "$name")"
+  echo "iOS floor: $name=${value:-<unset>}"
+  if [ -n "$value" ]; then
+    API_ENV_EXTRA="$API_ENV_EXTRA,$name=$value"
+  fi
+done
+
 WEB_POSTHOG_ARGS=()
 if [ -n "$WEB_POSTHOG_KEY" ]; then
   WEB_POSTHOG_ARGS+=(--build-arg "VITE_POSTHOG_KEY=$WEB_POSTHOG_KEY")
