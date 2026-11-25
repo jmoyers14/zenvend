@@ -57,6 +57,16 @@ final class ClientSupportTests: XCTestCase {
         XCTAssertFalse(support.isWallVisible)
     }
 
+    func testARejectionWithoutALinkKeepsTheKnownOne() {
+        let support = ClientSupport()
+        support.apply(.recommended, updateUrl: updateUrl)
+
+        support.requireUpdate(updateUrl: nil)
+
+        XCTAssertEqual(support.requirement, .required)
+        XCTAssertEqual(support.updateUrl, updateUrl)
+    }
+
     // MARK: - Verdict decoding
 
     func testDecodesTheServerVocabulary() throws {

@@ -1,6 +1,7 @@
 import { forEachOpenApiProcedure, generateOpenApiDocument } from "trpc-to-openapi";
-import type { CreateDocumentOptions } from "zod-openapi";
+import { type CreateDocumentOptions, createSchema } from "zod-openapi";
 import { appRouter } from "../router.ts";
+import { upgradeRequiredDto } from "../schemas/clientSupport.ts";
 
 type ResponseEntry = Record<string, unknown> & {
   $ref?: string;
@@ -188,6 +189,29 @@ const override: NonNullable<CreateDocumentOptions["override"]> = (ctx) => {
   }
 };
 
+// trpc-to-openapi types every error status with its generic error body, but
+// the 426 comes from the gate in index.ts and carries updateUrl as well.
+function declareUpgradeRequiredBody<
+  T extends { paths?: unknown; components?: { schemas?: unknown } },
+>(document: T): T {
+  const { schema, components } = createSchema(upgradeRequiredDto, {
+    io: "output",
+    opts: { override },
+  });
+  const content = { "application/json": { schema } };
+  for (const operation of operationsIn(document.paths)) {
+    const responses = operation.responses as Record<string, ResponseEntry>;
+    const upgradeRequired = responses["426"];
+    if (upgradeRequired) {
+      responses["426"] = { ...upgradeRequired, content };
+    }
+  }
+  if (isObject(document.components?.schemas)) {
+    Object.assign(document.components.schemas, components);
+  }
+  return document;
+}
+
 /** Pure, so the drift test can compare against it. Writing to disk is scripts/generateOpenApi.ts. */
 export function buildOpenApiDocument() {
   const generated = generateOpenApiDocument(appRouter, {
@@ -211,5 +235,7 @@ export function buildOpenApiDocument() {
     options: { reused: "inline", override },
   });
 
-  return inlineNullableResponseSchemas(relabelErrorResponses(generated));
+  return declareUpgradeRequiredBody(
+    inlineNullableResponseSchemas(relabelErrorResponses(generated)),
+  );
 }

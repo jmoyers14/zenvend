@@ -1,3 +1,4 @@
+import type { UpgradeRequired } from "../schemas/clientSupport.ts";
 import type { MobileClientSupportService } from "../services/MobileClientSupportService/MobileClientSupportService.ts";
 import type { HttpMiddleware } from "./types.ts";
 
@@ -22,14 +23,11 @@ export function buildClientSupportGate(
 
     res.statusCode = 426;
     res.setHeader("content-type", "application/json");
-    res.end(
-      JSON.stringify({
-        error: {
-          code: "UPGRADE_REQUIRED",
-          message: "This app version is no longer supported. Please update.",
-          updateUrl: clientSupport.updateUrl,
-        },
-      }),
-    );
+    const rejection: UpgradeRequired = {
+      code: "UPGRADE_REQUIRED",
+      message: "This app version is no longer supported. Please update.",
+      updateUrl: clientSupport.updateUrl,
+    };
+    res.end(JSON.stringify(rejection));
   };
 }

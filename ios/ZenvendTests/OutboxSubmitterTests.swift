@@ -49,6 +49,23 @@ final class OutboxSubmitterTests: XCTestCase {
         try context.fetch(FetchDescriptor<OutboxItem>()).count
     }
 
+    /// Stops before touching a row, so waiting out the wall never counts as a
+    /// failed attempt.
+    func testAWalledDrainSendsNothingAndKeepsEveryRow() async throws {
+        try setUpStore()
+        insert(id: "a", countedAt: 100)
+        insert(id: "b", status: "sending", countedAt: 200)
+
+        await OutboxSubmitter(
+            api: api, context: context, isUpdateRequired: { true },
+            now: { self.now }, jitter: { 1 }
+        ).drain()
+
+        XCTAssertTrue(api.submitted.isEmpty)
+        XCTAssertEqual(try rowCount(), 2)
+        XCTAssertEqual(try item("a").attemptCount, 0, "a walled drain is not a failed attempt")
+    }
+
     /// Success is the one exit from the queue, and it leaves nothing behind:
     /// the server is the record of what synced, and a table of sent rows grows
     /// without bound.

@@ -18,12 +18,16 @@ struct RootView: View {
         // before the app has explained itself teaches people to dismiss the
         // one that matters later.
         LocalLockGate(lock: lock, isArmed: hasMirroredOrg) {
-            if hasMirroredOrg {
-                LocationListView()
-                    .updateWall(clientSupport)
-            } else {
-                FirstRunView()
+            Group {
+                if hasMirroredOrg {
+                    LocationListView()
+                } else {
+                    FirstRunView()
+                }
             }
+            // On both branches: a walled build's first sync 426s, and without
+            // the wall the empty screen would never say why.
+            .updateWall(clientSupport)
         }
         // Lagoon buttons are pills. Set once here, it reaches every screen and
         // sheet below.

@@ -34,6 +34,12 @@ struct ZenvendAPIClient: ZenvendAPI {
         )
     }
 
+    func fetchClientSupport(build: Int) async throws -> RemoteClientSupport {
+        let response = try await client.getClientSupport(query: .init(platform: .ios, build: build))
+        let verdict = try response.ok.body.json
+        return RemoteClientSupport(verdict)
+    }
+
     func fetchIdentity() async throws -> RemoteIdentity {
         let response = try await client.getCurrentIdentity(.init())
         let identity = try response.ok.body.json

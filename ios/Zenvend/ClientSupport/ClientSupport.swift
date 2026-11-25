@@ -51,6 +51,8 @@ final class ClientSupport {
 
     var isDismissible: Bool { requirement == .recommended }
 
+    var isUpdateRequired: Bool { requirement == .required }
+
     /// A changed verdict resurfaces a dismissed nudge — escalation has to reach
     /// someone who waved the first one away.
     func apply(_ requirement: UpdateRequirement, updateUrl: URL?) {
@@ -59,6 +61,11 @@ final class ClientSupport {
         }
         self.requirement = requirement
         self.updateUrl = updateUrl
+    }
+
+    /// The `426` path. A rejection without a link keeps the one already known.
+    func requireUpdate(updateUrl: URL?) {
+        apply(.required, updateUrl: updateUrl ?? self.updateUrl)
     }
 
     func dismissNudge() {

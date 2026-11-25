@@ -6,6 +6,9 @@ import Foundation
 /// empty, and a test overrides only what it cares about — including throwing,
 /// which is how the "a failed fetch must not delete anything" cases are built.
 final class StubZenvendAPI: ZenvendAPI, @unchecked Sendable {
+    var clientSupport: @Sendable (Int) async throws -> RemoteClientSupport = { _ in
+        RemoteClientSupport(updateRequirement: .none, updateUrl: nil)
+    }
     var identity: @Sendable () async throws -> RemoteIdentity = {
         RemoteIdentity(userId: "user-1", orgId: "org-a")
     }
@@ -22,6 +25,11 @@ final class StubZenvendAPI: ZenvendAPI, @unchecked Sendable {
     var onAttachPackBarcode: @Sendable (String, String) async throws -> RemotePack = { _, _ in throw StubError.unreachable }
 
     private(set) var callCount = 0
+
+    func fetchClientSupport(build: Int) async throws -> RemoteClientSupport {
+        callCount += 1
+        return try await clientSupport(build)
+    }
 
     func fetchIdentity() async throws -> RemoteIdentity {
         callCount += 1

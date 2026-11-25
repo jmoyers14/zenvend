@@ -5,7 +5,7 @@ import SwiftUI
 @main
 struct ZenvendApp: App {
     @State private var session = ClerkSession()
-    @State private var clientSupport = ClientSupport()
+    @State private var clientSupport: ClientSupport
     @State private var lock = LocalLock()
     @State private var refresher: MirrorRefresher
     @State private var submitter: OutboxSubmitter
@@ -20,8 +20,14 @@ struct ZenvendApp: App {
         Clerk.configure(publishableKey: AppEnvironment.clerkPublishableKey)
         let container = ZenvendStore.makeContainer()
         self.container = container
-        // One client for both pipes: same base URL, same auth middleware.
-        let api = ZenvendAPIClient()
+        let clientSupport = ClientSupport()
+        _clientSupport = State(initialValue: clientSupport)
+        // One client for both pipes: same base URL, same middleware. The
+        // client-support stamp is what lets the server 426 an old build.
+        let api = ZenvendAPIClient(middlewares: [
+            AuthTokenMiddleware(),
+            ClientSupportMiddleware(build: ClientBuild.current, gate: clientSupport),
+        ])
         self.api = api
         _refresher = State(
             initialValue: MirrorRefresher(
@@ -30,7 +36,11 @@ struct ZenvendApp: App {
             )
         )
         _submitter = State(
-            initialValue: OutboxSubmitter(api: api, context: container.mainContext)
+            initialValue: OutboxSubmitter(
+                api: api,
+                context: container.mainContext,
+                isUpdateRequired: { clientSupport.isUpdateRequired }
+            )
         )
     }
 
@@ -51,8 +61,7 @@ struct ZenvendApp: App {
                 // the result. It must never gate what is shown — a cold offline
                 // launch is expected to fail here.
                 session.refreshFromClerk()
-                await refresher.refresh()
-                await submitter.drain()
+                await refreshAndDrain()
             }
             // Backoff needs a retry lifecycle events will not provide: submit
             // in a basement, walk upstairs, never background the app.
@@ -64,10 +73,7 @@ struct ZenvendApp: App {
             }
             .onChange(of: scenePhase) { _, phase in
                 guard phase == .active else { return }
-                Task {
-                    await refresher.refresh()
-                    await submitter.drain()
-                }
+                Task { await refreshAndDrain() }
             }
             // Signing in happens in-app, so neither trigger above fires for it.
             // Without this a fresh install dead-ends: the launch refresh 401s
@@ -81,6 +87,31 @@ struct ZenvendApp: App {
                     await submitter.drain()
                 }
             }
+        }
+    }
+
+    /// The verdict lands before the drain, so a too-old build never submits
+    /// first and learns afterwards. The mirror refresh runs alongside it.
+    private func refreshAndDrain() async {
+        async let verdictChecked: Void = checkClientSupport()
+        await refresher.refresh()
+        await verdictChecked
+        await submitter.drain()
+    }
+
+    /// Best-effort: offline keeps the current verdict, and the `426` backstop
+    /// covers whatever this misses.
+    private func checkClientSupport() async {
+        #if DEBUG
+        // A forced wall would otherwise be cleared by the real verdict.
+        guard !ProcessInfo.processInfo.arguments.contains("-updateRequirement") else { return }
+        #endif
+        guard let build = ClientBuild.current else { return }
+        do {
+            let verdict = try await api.fetchClientSupport(build: build)
+            clientSupport.apply(verdict.updateRequirement, updateUrl: verdict.updateUrl)
+        } catch {
+            print("[client-support] check failed: \(error)")
         }
     }
 }

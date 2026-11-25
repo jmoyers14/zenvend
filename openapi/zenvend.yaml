@@ -24,25 +24,28 @@ paths:
                 $ref: "#/components/schemas/Identity"
         "401":
           description: Authorization not provided
-          content: &a2
+          content: &a1
             application/json:
               schema:
                 $ref: "#/components/schemas/error.UNAUTHORIZED"
         "403":
           description: Insufficient access
-          content: &a3
+          content: &a2
             application/json:
               schema:
                 $ref: "#/components/schemas/error.FORBIDDEN"
         "426":
           description: This build is below the supported floor; the client must update.
-          content: &a1
+          content: &a3
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpgradeRequired"
+        "500":
+          description: Internal server error
+          content: &a4
             application/json:
               schema:
                 $ref: "#/components/schemas/error.INTERNAL_SERVER_ERROR"
-        "500":
-          description: Internal server error
-          content: *a1
   /barcode-candidate:
     get:
       operationId: getBarcodeCandidate
@@ -86,16 +89,16 @@ paths:
                   - imageUrl
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
   /locations:
     get:
       operationId: listLocations
@@ -115,16 +118,16 @@ paths:
                   $ref: "#/components/schemas/Location"
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
   /machines:
     get:
       operationId: listMachines
@@ -144,16 +147,16 @@ paths:
                   $ref: "#/components/schemas/Machine"
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
   /packs:
     get:
       operationId: listPacks
@@ -173,16 +176,16 @@ paths:
                   $ref: "#/components/schemas/Pack"
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
     post:
       operationId: createPack
       summary: Create a way of buying — a case with its own barcodes
@@ -238,28 +241,28 @@ paths:
                 $ref: "#/components/schemas/Pack"
         "400":
           description: Invalid input data
-          content: &a4
+          content: &a5
             application/json:
               schema:
                 $ref: "#/components/schemas/error.BAD_REQUEST"
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "409":
           description: The barcode already belongs to another record
-          content: &a5
+          content: &a6
             application/json:
               schema:
                 $ref: "#/components/schemas/error.CONFLICT"
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
   /packs/{id}/barcode:
     put:
       operationId: attachPackBarcode
@@ -296,28 +299,28 @@ paths:
                 $ref: "#/components/schemas/Pack"
         "400":
           description: Invalid input data
-          content: *a4
+          content: *a5
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "404":
           description: No such pack
-          content: &a6
+          content: &a7
             application/json:
               schema:
                 $ref: "#/components/schemas/error.NOT_FOUND"
         "409":
           description: The barcode already belongs to another record
-          content: *a5
+          content: *a6
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
   /planograms/current:
     get:
       operationId: listCurrentPlanograms
@@ -337,16 +340,16 @@ paths:
                   $ref: "#/components/schemas/Planogram"
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
   /products:
     get:
       operationId: listProducts
@@ -366,16 +369,16 @@ paths:
                   $ref: "#/components/schemas/Product"
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
     post:
       operationId: createProduct
       summary: Create a sellable unit
@@ -436,22 +439,22 @@ paths:
                 $ref: "#/components/schemas/Product"
         "400":
           description: Invalid input data
-          content: *a4
+          content: *a5
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "409":
           description: The barcode already belongs to another record
-          content: *a5
+          content: *a6
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
   /products/{id}/barcode:
     put:
       operationId: attachProductBarcode
@@ -488,25 +491,25 @@ paths:
                 $ref: "#/components/schemas/Product"
         "400":
           description: Invalid input data
-          content: *a4
+          content: *a5
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "404":
           description: No such product
-          content: *a6
+          content: *a7
         "409":
           description: The barcode already belongs to another record
-          content: *a5
+          content: *a6
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
   /purchases:
     post:
       operationId: createPurchase
@@ -607,19 +610,19 @@ paths:
                 $ref: "#/components/schemas/Purchase"
         "400":
           description: Invalid input data
-          content: *a4
+          content: *a5
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
   /client-support:
     get:
       operationId: getClientSupport
@@ -649,13 +652,13 @@ paths:
                 $ref: "#/components/schemas/ClientSupport"
         "400":
           description: Invalid input data
-          content: *a4
+          content: *a5
         "404":
           description: Not found
-          content: *a6
+          content: *a7
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
   /visits/latest:
     get:
       operationId: listLatestVisits
@@ -675,16 +678,16 @@ paths:
                   $ref: "#/components/schemas/Visit"
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
   /visits:
     post:
       operationId: createVisit
@@ -906,19 +909,19 @@ paths:
                 $ref: "#/components/schemas/Visit"
         "400":
           description: Invalid input data
-          content: *a4
+          content: *a5
         "401":
           description: Authorization not provided
-          content: *a2
+          content: *a1
         "403":
           description: Insufficient access
-          content: *a3
+          content: *a2
         "426":
           description: This build is below the supported floor; the client must update.
-          content: *a1
+          content: *a3
         "500":
           description: Internal server error
-          content: *a1
+          content: *a4
 components:
   schemas:
     Identity:
@@ -1680,6 +1683,20 @@ components:
         - clientRequestId
         - createdAt
         - updatedAt
+    UpgradeRequired:
+      type: object
+      properties:
+        code:
+          type: string
+          const: UPGRADE_REQUIRED
+        message:
+          type: string
+        updateUrl:
+          type: string
+      required:
+        - code
+        - message
+        - updateUrl
   securitySchemes:
     bearer:
       type: http

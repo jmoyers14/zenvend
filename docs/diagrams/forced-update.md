@@ -1,15 +1,14 @@
 # Forced update
 
-How a Vendpire iOS build that we no longer support gets told to upgrade, and
+How a Zenvend iOS build that we no longer support gets told to upgrade, and
 how the floor that decides "no longer supported" gets raised without stranding
 anyone.
 
-> **Status: the server half is built; the client half is not.** The floor, the
-> `client-support` endpoint and the `426` gate all exist and are deployed
-> inert behind a default floor of `0`. Nothing in the iOS app exists yet — no
-> gate, no wall, no middleware — so today the mechanism decides correctly and
-> has nobody listening. See "Where it lives" at the bottom for which paths are
-> real and which are still destinations.
+> **Status: built end to end (2026-11-25).** The floor, the `client-support`
+> endpoint, the `426` gate, the iOS gate and wall, the launch check and the
+> middleware all exist, inert behind a default floor of `0`. Builds from before
+> the middleware landed send no `X-Zenvend-Client` header and can never be
+> walled. See "Where it lives" at the bottom.
 
 ## Why this is documented before it is built
 
@@ -55,7 +54,7 @@ flowchart LR
         Store[("SwiftData mirror")]
     end
 
-    subgraph api["vendpire-api"]
+    subgraph api["zenvend-api"]
         Endpoint["/api/v1/client-support<br/>publicProcedure"]
         Config["mobileConfig<br/>iosMinimumBuild = 43"]
     end
@@ -63,7 +62,7 @@ flowchart LR
     Posthog[("PostHog")]
 
     Bundle -->|"read at launch"| Mw
-    Mw -->|"X-Vendpire-Client: ios/42"| Endpoint
+    Mw -->|"X-Zenvend-Client: ios/42"| Endpoint
     Endpoint -->|"reads the floor"| Config
     Endpoint -->|"updateRequirement = required"| Gate
     Endpoint -->|"stale-client event"| Posthog
@@ -100,7 +99,7 @@ half-count a machine and hit a failure mid-task.
 
 ```mermaid
 sequenceDiagram
-    participant App as VendpireApp
+    participant App as ZenvendApp
     participant Store as SwiftData mirror
     participant Api as GET /api/v1/client-support
     participant Gate as ClientSupport
@@ -131,7 +130,7 @@ sequenceDiagram
     participant Gate as ClientSupport
 
     Outbox->>Mw: submit draft
-    Mw->>Api: body + X-Vendpire-Client: ios/42
+    Mw->>Api: body + X-Zenvend-Client: ios/42
     Api-->>Mw: 426 Upgrade Required
     Mw->>Gate: .required
     Mw-->>Outbox: retryable failure
@@ -206,22 +205,21 @@ wall, so assert the mirror still renders behind it.
 
 ## Where it lives
 
-Built:
-
 | Path | Role |
 |---|---|
 | `packages/api/src/config/mobileConfig.ts` | the floor, defaulting to `0` |
-| `packages/api/src/clientSupport/clientSupport.ts` | the verdict + header parsing, shared by both layers |
-| `packages/api/src/clientSupport/clientSupportGate.ts` | the `426` backstop, upstream of the router |
-| `packages/api/src/routers/system.ts` | the `clientSupport` procedure |
+| `packages/api/src/services/MobileClientSupportService/` | the verdict + header parsing, shared by both layers |
+| `packages/api/src/middleware/clientSupportGate.ts` | the `426` backstop, upstream of the router |
+| `packages/api/src/routers/system.ts` | `GET /api/v1/client-support` |
+| `ios/Zenvend/ClientSupport/ClientSupport.swift` | the `@Observable` gate; reports `CFBundleVersion` |
+| `ios/Zenvend/Features/UpdateRequired/` | the wall, applied in `RootView` over both the list and first run |
+| `ios/Zenvend/Services/ZenvendAPI/ClientSupportMiddleware.swift` | header + `426` interception |
+| `ios/Zenvend/ZenvendApp.swift` | the launch/foreground check, ahead of the outbox drain |
 
-Still destinations:
-
-| Path | Role | Phase |
-|---|---|---|
-| `ios/Vendpire/ClientSupport/ClientSupport.swift` | the `@Observable` gate + build comparison | 2 |
-| `ios/Vendpire/Features/UpdateRequired/` | the wall view | 2 |
-| `ios/Vendpire/Network/ClientSupportMiddleware.swift` | header + `426` interception | 7 |
+The header is `X-Zenvend-Client: ios/<CFBundleVersion>`. The `426` body is the
+`UpgradeRequired` schema in `packages/api/src/schemas/clientSupport.ts` —
+`{ code, message, updateUrl }` — and every `426` in the OpenAPI document refers
+to it, so the generated Swift client decodes what the gate actually sends.
 
 **One note on the 426, since it shaped the layout above.** tRPC cannot produce
 this status: its code table has no entry mapping to 426 and unmapped codes fall

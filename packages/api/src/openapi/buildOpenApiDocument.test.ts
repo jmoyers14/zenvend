@@ -92,6 +92,26 @@ describe("the surface's auth posture", () => {
 });
 
 describe("the shapes a Swift client has to decode", () => {
+  it("types every 426 as the gate's body, so Swift can read where to update", () => {
+    const upgradeRequired = document.components.schemas.UpgradeRequired;
+    expect(upgradeRequired.required).toEqual(["code", "message", "updateUrl"]);
+
+    for (const [route, item] of Object.entries<Record<string, { responses: Record<string, any> }>>(document.paths)) {
+      for (const operation of Object.values(item)) {
+        const refused = operation.responses["426"];
+        if (!refused) {
+          continue;
+        }
+        expect(refused.content["application/json"].schema, route).toEqual({
+          $ref: "#/components/schemas/UpgradeRequired",
+        });
+      }
+    }
+    expect(document.paths["/locations"].get.responses["500"].content["application/json"].schema).toEqual({
+      $ref: "#/components/schemas/error.INTERNAL_SERVER_ERROR",
+    });
+  });
+
   it("emits named components rather than inlining a copy per endpoint", () => {
     expect(Object.keys(document.components.schemas)).toEqual(
       expect.arrayContaining([

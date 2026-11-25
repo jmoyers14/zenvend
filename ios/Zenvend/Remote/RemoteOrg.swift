@@ -136,6 +136,12 @@ nonisolated struct RemoteIdentity: Decodable, Sendable {
     let orgId: String?
 }
 
+/// The server's verdict on this build, from the launch check.
+nonisolated struct RemoteClientSupport: Sendable {
+    let updateRequirement: UpdateRequirement
+    let updateUrl: URL?
+}
+
 /// What an outside barcode database says a scanned code might name. `nil`
 /// fields are a real "we don't know" from that database, not a decode
 /// failure; a `nil` candidate entirely means the code is unrecognized.

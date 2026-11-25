@@ -13,6 +13,20 @@ export const clientSupportDto = z
   })
   .meta({ id: "ClientSupport" });
 
+/**
+ * The `426` body. Flat like every other REST error, plus where to update, so
+ * the generated Swift client decodes it instead of failing on it.
+ */
+export const upgradeRequiredDto = z
+  .object({
+    code: z.literal("UPGRADE_REQUIRED"),
+    message: z.string(),
+    updateUrl: z.string(),
+  })
+  .meta({ id: "UpgradeRequired" });
+
+export type UpgradeRequired = z.infer<typeof upgradeRequiredDto>;
+
 type ClientSupportShape = {
   updateRequirement: UpdateRequirement;
   updateUrl: string;
