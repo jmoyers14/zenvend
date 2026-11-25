@@ -3,9 +3,8 @@ import type { Location } from "@zenvend/platform";
 import type { Assert, Equal } from "./exactly.ts";
 
 /**
- * Kept despite being the one union that puts a `oneOf` in the document:
- * `.output()` strips at runtime for every caller, and `locations.list` is
- * shared with the dashboard, which needs it. The phone ignores it.
+ * A closed union for the dashboard over tRPC. The OpenAPI document flattens it
+ * to one object with an open `type`, so the phone survives a new arm.
  */
 const locationCommission = z
   .discriminatedUnion("type", [

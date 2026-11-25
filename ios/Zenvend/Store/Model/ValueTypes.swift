@@ -34,11 +34,8 @@ nonisolated struct ContactInfo: Codable, Equatable, Hashable, Sendable {
 /// What a location is owed. Percentages are **basis points** (1000 = 10%), never
 /// a float, and flat amounts are `Int` cents — the money rule applies here too.
 nonisolated struct Commission: Codable, Equatable, Hashable, Sendable {
-    /// Raw rather than an enum, on the principle that an unrecognised value
-    /// should cost one field rather than the whole location. Currently moot:
-    /// the generated `oneOf` upstream is closed, so an unknown commission arm
-    /// fails the decode and with it the entire refresh, before anything
-    /// reaches this struct.
+    /// Raw rather than an enum, so an unrecognised arm costs `kind` (it reads
+    /// `nil`) rather than the whole location.
     var type: String
     var percentBps: Int?
     var flatCents: Int?

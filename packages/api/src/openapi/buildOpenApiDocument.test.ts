@@ -27,6 +27,21 @@ const EXPECTED_PATHS = [
 // Read once: every assertion below only reads it.
 const document = parse(readFileSync(COMMITTED, "utf8"));
 
+function* valueSetsIn(
+  node: unknown,
+  path = "",
+): Generator<{ path: string; keyword: string }> {
+  if (typeof node !== "object" || node === null) {
+    return;
+  }
+  for (const [key, child] of Object.entries(node)) {
+    if (key === "enum" || key === "const" || key === "oneOf") {
+      yield { path, keyword: key };
+    }
+    yield* valueSetsIn(child, path ? `${path}.${key}` : key);
+  }
+}
+
 describe("the committed OpenAPI document", () => {
   it("matches a fresh generation, so a schema change cannot ship un-regenerated", () => {
     const fresh = stringify(buildOpenApiDocument());
@@ -151,9 +166,56 @@ describe("the shapes a Swift client has to decode", () => {
     expect(document.components.schemas.Location.properties.commission).toEqual(
       { $ref: "#/components/schemas/LocationCommission" },
     );
-    expect(document.components.schemas.LocationCommission.oneOf).toHaveLength(
-      3,
+  });
+
+  it("closes no value set in a response, so a new server value cannot break an old build", () => {
+    const closedSets = [...valueSetsIn(document.components.schemas)].filter(
+      ({ path }) => !path.startsWith("UpgradeRequired"),
     );
+
+    expect(closedSets).toEqual([]);
+  });
+
+  it("flattens commission to one object with an open type — a new arm still decodes", () => {
+    const commission = document.components.schemas.LocationCommission;
+
+    expect(commission.oneOf).toBeUndefined();
+    expect(commission.required).toEqual(["type"]);
+    expect(Object.keys(commission.properties).sort()).toEqual([
+      "basis",
+      "flatCents",
+      "percentBps",
+      "type",
+    ]);
+    expect(commission.properties.type.description).toContain(
+      "none, percent, flat",
+    );
+  });
+
+  it("keeps a response's known values in its description", () => {
+    const { kind } = document.components.schemas.Machine.properties;
+    const { removedReason } =
+      document.components.schemas.Visit.properties.lines.items.properties;
+
+    expect(kind.description).toContain("snack, drink, combo");
+    expect(removedReason.description).toContain("Required when removed > 0");
+    expect(removedReason.description).toContain("destocked, transferred");
+  });
+
+  it("keeps removedReason closed on the write path — a client must not invent one", () => {
+    const body =
+      document.paths["/visits"].post.requestBody.content["application/json"]
+        .schema;
+    const { removedReason } = body.properties.lines.items.properties;
+
+    expect(removedReason.enum).toEqual([
+      "expired",
+      "damaged",
+      "recalled",
+      "destocked",
+      "transferred",
+      null,
+    ]);
   });
 
   it("accepts a null removedReason — most visit lines have nothing removed", () => {
@@ -232,9 +294,8 @@ describe("the shapes a Swift client has to decode", () => {
       schemas.Visit.properties.lines.items.properties.priceCents,
       schemas.Purchase.properties.lines.items.properties.units,
       schemas.Purchase.properties.lines.items.properties.totalCostCents,
-      // LocationCommission is a oneOf: [none, percent, flat].
-      schemas.LocationCommission.oneOf[1].properties.percentBps,
-      schemas.LocationCommission.oneOf[2].properties.flatCents,
+      schemas.LocationCommission.properties.percentBps,
+      schemas.LocationCommission.properties.flatCents,
     ];
 
     for (const property of moneyAndCounts) {
