@@ -56,7 +56,8 @@ test.describe("the 426 backstop", () => {
 
     expect(response.status).toBe(426);
     expect(await response.json()).toMatchObject({
-      error: { code: "UPGRADE_REQUIRED" },
+      code: "UPGRADE_REQUIRED",
+      message: expect.any(String),
     });
   });
 

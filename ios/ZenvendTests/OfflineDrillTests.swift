@@ -1,3 +1,5 @@
+import HTTPTypes
+import OpenAPIRuntime
 import SwiftData
 import XCTest
 
@@ -105,6 +107,51 @@ final class OfflineDrillTests: XCTestCase {
         )
         XCTAssertEqual(try count(OutboxItem.self, in: relaunched), 0, "the queue empties")
         XCTAssertEqual(try count(VisitDraft.self, in: relaunched), 0, "drafts go with them")
+    }
+
+    /// The floor rises while a visit is queued: the real client and middleware
+    /// meet a 426, the wall goes up, and the visit and its draft wait behind it
+    /// until the update — never dropped, never parked as needsAttention.
+    func testAVisitQueuedWhenTheFloorRisesSurvivesBehindTheWall() async throws {
+        try setUpStore()
+        let context = ModelContext(container)
+        let queued = try captureVisit(at: "machine-1", countedAt: morning, in: context)
+
+        let support = ClientSupport()
+        let requests = LockedBox(0)
+        let walledApi = ZenvendAPIClient(
+            transport: StubTransport { _, _ in
+                requests.value += 1
+                return (HTTPResponse(status: .init(code: 426)), HTTPBody(#"{"code":"UPGRADE_REQUIRED","message":"Update.","updateUrl":"https://apps.apple.com/app/id123"}"#))
+            },
+            middlewares: [
+                ClientSupportMiddleware(build: 42) { url in await support.requireUpdate(updateUrl: url) },
+            ]
+        )
+        let submitter = OutboxSubmitter(
+            api: walledApi, context: context,
+            isUpdateRequired: { support.requirement == .required },
+            now: { self.afternoon }, jitter: { 1 }
+        )
+
+        await submitter.drain()
+        XCTAssertEqual(support.requirement, .required, "the 426 raises the wall")
+        await submitter.drain()
+        XCTAssertEqual(requests.value, 1, "behind the wall, nothing more is sent")
+
+        let relaunched = ModelContext(container)
+        let row = try XCTUnwrap(try relaunched.fetch(FetchDescriptor<OutboxItem>()).first)
+        XCTAssertEqual(row.id, queued)
+        XCTAssertEqual(row.status, "queued")
+        XCTAssertEqual(try count(VisitDraft.self, in: relaunched), 1, "the draft survives the wall")
+
+        // The updated build: no wall, and the same row sends.
+        let online = StubOutboxAPI()
+        await OutboxSubmitter(
+            api: online, context: relaunched,
+            now: { self.afternoon.addingTimeInterval(7200) }, jitter: { 1 }
+        ).drain()
+        XCTAssertEqual(online.submitted, [queued])
     }
 
     /// The payload the server would receive, assembled through the real path

@@ -61,6 +61,11 @@ final class ClientSupport {
         self.updateUrl = updateUrl
     }
 
+    /// The `426` path. A rejection without a link keeps the one already known.
+    func requireUpdate(updateUrl: URL?) {
+        apply(.required, updateUrl: updateUrl ?? self.updateUrl)
+    }
+
     func dismissNudge() {
         guard isDismissible else { return }
         isNudgeDismissed = true

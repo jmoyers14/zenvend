@@ -18,22 +18,28 @@ final class OutboxSubmitter {
 
     private let api: OutboxSubmitting
     private let context: ModelContext
+    private let isUpdateRequired: () -> Bool
     private let now: () -> Date
     private let jitter: () -> Double
 
     init(
         api: OutboxSubmitting,
         context: ModelContext,
+        isUpdateRequired: @escaping () -> Bool = { false },
         now: @escaping () -> Date = Date.init,
         jitter: @escaping () -> Double = { Double.random(in: 0...1) }
     ) {
         self.api = api
         self.context = context
+        self.isUpdateRequired = isUpdateRequired
         self.now = now
         self.jitter = jitter
     }
 
     func drain() async {
+        // A walled build must not write under a contract the server has
+        // dropped. Rows and drafts stay put and send after the update.
+        guard !isUpdateRequired() else { return }
         // Launch and foreground fire within milliseconds, same as the mirror.
         guard state != .draining else { return }
         state = .draining

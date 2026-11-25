@@ -22,13 +22,13 @@ export function buildClientSupportGate(
 
     res.statusCode = 426;
     res.setHeader("content-type", "application/json");
+    // Flat, like every other error on the REST surface: the generated Swift
+    // client decodes a 426 against that shape and fails on anything else.
     res.end(
       JSON.stringify({
-        error: {
-          code: "UPGRADE_REQUIRED",
-          message: "This app version is no longer supported. Please update.",
-          updateUrl: clientSupport.updateUrl,
-        },
+        code: "UPGRADE_REQUIRED",
+        message: "This app version is no longer supported. Please update.",
+        updateUrl: clientSupport.updateUrl,
       }),
     );
   };

@@ -53,6 +53,7 @@ private enum PurchasePreviewData {
 private struct OfflineZenvendAPI: ZenvendAPI {
     private var offline: URLError { URLError(.notConnectedToInternet) }
 
+    func fetchClientSupport(build: Int) async throws -> RemoteClientSupport { throw offline }
     func fetchIdentity() async throws -> RemoteIdentity { throw offline }
     func fetchLocations() async throws -> [RemoteLocation] { throw offline }
     func fetchMachines() async throws -> [RemoteMachine] { throw offline }

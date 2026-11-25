@@ -6,6 +6,8 @@ import Foundation
 /// lines and the bundled fixture remains usable as test input. The generated
 /// types live behind `ZenvendAPIClient` and nowhere else. See ARCHITECTURE.md.
 protocol ZenvendAPI: Sendable {
+    /// Unauthenticated: a walled build likely holds an expired session too.
+    func fetchClientSupport(build: Int) async throws -> RemoteClientSupport
     func fetchIdentity() async throws -> RemoteIdentity
     func fetchLocations() async throws -> [RemoteLocation]
     func fetchMachines() async throws -> [RemoteMachine]

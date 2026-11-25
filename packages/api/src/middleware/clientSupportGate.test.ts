@@ -71,7 +71,9 @@ describe("buildClientSupportGate", () => {
 
     expect(result.headers["content-type"]).toContain("application/json");
     expect(JSON.parse(result.body ?? "{}")).toMatchObject({
-      error: { code: "UPGRADE_REQUIRED", updateUrl: UPDATE_URL },
+      code: "UPGRADE_REQUIRED",
+      message: expect.any(String),
+      updateUrl: UPDATE_URL,
     });
   });
 });

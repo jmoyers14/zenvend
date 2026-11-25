@@ -14,6 +14,15 @@ extension RemoteIdentity {
     }
 }
 
+extension RemoteClientSupport {
+    init(_ generated: Components.Schemas.ClientSupport) {
+        self.init(
+            updateRequirement: UpdateRequirement(rawValue: generated.updateRequirement.rawValue) ?? .none,
+            updateUrl: URL(string: generated.updateUrl)
+        )
+    }
+}
+
 extension RemoteLocation {
     init(_ generated: Components.Schemas.Location) {
         self.init(
