@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.18.0](https://github.com/jmoyers14/zenvend/compare/v0.17.0...v0.18.0) (2026-11-25)
+
+
+### Features
+
+* **ios:** wire the forced-update wall ([#87](https://github.com/jmoyers14/zenvend/issues/87)) ([a2651e6](https://github.com/jmoyers14/zenvend/commit/a2651e67a66556e26c32d7ef4c4faebb360098da))
+
+
+### Bug Fixes
+
+* **api:** point the default update url at a real App Store listing ([#91](https://github.com/jmoyers14/zenvend/issues/91)) ([787acd7](https://github.com/jmoyers14/zenvend/commit/787acd7348202b341d79b825d901b4bdbeacde3f))
+* **deploy:** keep the iOS support floor across api deploys ([#90](https://github.com/jmoyers14/zenvend/issues/90)) ([b2e707f](https://github.com/jmoyers14/zenvend/commit/b2e707f16dbc87ed345fe58778eebc66533c0ccd))
+* **ios:** integer build numbers so release builds can be walled ([#89](https://github.com/jmoyers14/zenvend/issues/89)) ([e8173d4](https://github.com/jmoyers14/zenvend/commit/e8173d4bb4a723c4d4abe34924341a7ba54dbf6a))
+
 ## [0.17.0](https://github.com/jmoyers14/zenvend/compare/v0.16.0...v0.17.0) (2026-11-24)
 
 
