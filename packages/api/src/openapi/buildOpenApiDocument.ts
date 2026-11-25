@@ -166,8 +166,14 @@ const override: NonNullable<CreateDocumentOptions["override"]> = (ctx) => {
     const nullArm = schema.anyOf.find((arm) => arm.type === "null");
     const valueArm = schema.anyOf.find((arm) => arm.type !== "null");
     if (nullArm && valueArm && typeof valueArm.type === "string") {
+      const descriptions = [schema.description, valueArm.description].filter(
+        (text) => typeof text === "string",
+      );
       delete schema.anyOf;
       Object.assign(schema, valueArm, { type: [valueArm.type, "null"] });
+      if (descriptions.length > 0) {
+        schema.description = descriptions.join(" ");
+      }
 
       // `enum`/`const` constrain every instance, not just the value type, so a
       // collapsed nullable must admit null explicitly or it contradicts its own `type`.
@@ -186,8 +192,69 @@ const override: NonNullable<CreateDocumentOptions["override"]> = (ctx) => {
   // unknown keys rather than rejecting them.
   if (ctx.io === "output") {
     delete schema.additionalProperties;
+    flattenTaggedOneOf(schema);
+    openEnum(schema);
   }
 };
+
+/**
+ * Swift generates a closed enum for every `enum`, so one new server value fails
+ * the whole response. Responses list the known values in prose instead; inputs
+ * keep theirs, so a client still cannot invent one.
+ */
+function openEnum(schema: Record<string, unknown>): void {
+  if (!Array.isArray(schema.enum)) {
+    return;
+  }
+  const knownValues = schema.enum.filter((value) => value !== null);
+  delete schema.enum;
+  const known = `Known values: ${knownValues.join(", ")}. Expect others.`;
+  schema.description =
+    typeof schema.description === "string"
+      ? `${schema.description} ${known}`
+      : known;
+}
+
+/**
+ * A `oneOf` tagged by a `const` field is decoded by trying each arm, so an
+ * unknown tag fails every arm. One flat object with an open tag decodes
+ * anything; only the tag stays required.
+ */
+function flattenTaggedOneOf(schema: Record<string, unknown>): void {
+  const arms = schema.oneOf;
+  if (!Array.isArray(arms) || !arms.every(isObjectSchema)) {
+    return;
+  }
+  const tag = Object.keys(arms[0]?.properties ?? {}).find((key) =>
+    arms.every((arm) => isObject(arm.properties[key]) && "const" in arm.properties[key]),
+  );
+  if (!tag) {
+    return;
+  }
+
+  const properties: Record<string, Record<string, unknown>> = {};
+  for (const arm of arms) {
+    for (const [key, property] of Object.entries(arm.properties)) {
+      properties[key] ??= structuredClone(property);
+    }
+  }
+  properties[tag] = {
+    type: "string",
+    enum: arms.map((arm) => arm.properties[tag]?.const),
+  };
+  for (const property of Object.values(properties)) {
+    openEnum(property);
+  }
+
+  delete schema.oneOf;
+  Object.assign(schema, { type: "object", properties, required: [tag] });
+}
+
+function isObjectSchema(
+  value: unknown,
+): value is { properties: Record<string, Record<string, unknown>> } {
+  return isObject(value) && isObject(value.properties);
+}
 
 // trpc-to-openapi types every error status with its generic error body, but
 // the 426 comes from the gate in index.ts and carries updateUrl as well.

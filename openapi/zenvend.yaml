@@ -1150,45 +1150,24 @@ components:
         - createdAt
         - updatedAt
     LocationCommission:
-      oneOf:
-        - type: object
-          properties:
-            type:
-              type: string
-              const: none
-          required:
-            - type
-        - type: object
-          properties:
-            type:
-              type: string
-              const: percent
-            percentBps:
-              type: integer
-              minimum: -9007199254740991
-              maximum: 9007199254740991
-            basis:
-              type: string
-              enum:
-                - gross
-                - net
-          required:
-            - type
-            - percentBps
-            - basis
-        - type: object
-          properties:
-            type:
-              type: string
-              const: flat
-            flatCents:
-              type: integer
-              minimum: -9007199254740991
-              maximum: 9007199254740991
-          required:
-            - type
-            - flatCents
       type: object
+      properties:
+        type:
+          type: string
+          description: "Known values: none, percent, flat. Expect others."
+        percentBps:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        basis:
+          type: string
+          description: "Known values: gross, net. Expect others."
+        flatCents:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+      required:
+        - type
     Machine:
       type: object
       properties:
@@ -1201,10 +1180,7 @@ components:
           type: string
         kind:
           type: string
-          enum:
-            - snack
-            - drink
-            - combo
+          description: "Known values: snack, drink, combo. Expect others."
         make:
           type:
             - string
@@ -1239,9 +1215,7 @@ components:
           properties:
             provider:
               type: string
-              enum:
-                - nayax
-                - cantaloupe
+              description: "Known values: nayax, cantaloupe. Expect others."
             deviceId:
               type: string
           required:
@@ -1567,10 +1541,7 @@ components:
       properties:
         updateRequirement:
           type: string
-          enum:
-            - none
-            - recommended
-            - required
+          description: "Known values: none, recommended, required. Expect others."
         updateUrl:
           type: string
       required:
@@ -1619,18 +1590,12 @@ components:
                 minimum: -9007199254740991
                 maximum: 9007199254740991
               removedReason:
-                description: Required when removed > 0; decides whether the removed units are a
-                  write-off or a transfer.
+                description: "Required when removed > 0; decides whether the removed units are a
+                  write-off or a transfer. Known values: expired, damaged,
+                  recalled, destocked, transferred. Expect others."
                 type:
                   - string
                   - "null"
-                enum:
-                  - expired
-                  - damaged
-                  - recalled
-                  - destocked
-                  - transferred
-                  - null
               priceCents:
                 type: integer
                 minimum: -9007199254740991

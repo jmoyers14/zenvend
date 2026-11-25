@@ -17,7 +17,9 @@ extension RemoteIdentity {
 extension RemoteClientSupport {
     init(_ generated: Components.Schemas.ClientSupport) {
         self.init(
-            updateRequirement: UpdateRequirement(rawValue: generated.updateRequirement.rawValue) ?? .none,
+            // An unfamiliar verdict walls nothing; a build that is truly too old
+            // still meets the 426.
+            updateRequirement: UpdateRequirement(rawValue: generated.updateRequirement) ?? .none,
             updateUrl: URL(string: generated.updateUrl)
         )
     }
@@ -60,24 +62,15 @@ extension ContactInfo {
 }
 
 extension Commission {
-    /// Flattens the document's one `oneOf` into the stored struct. `type` stays
-    /// a raw `String`, but that buys nothing today: the generated `oneOf` is
-    /// closed, so an unrecognized arm fails the decode — and the whole refresh
-    /// with it, not just this location.
+    /// The document serves commission flat with an open `type`, so a new arm
+    /// arrives here as an unfamiliar string instead of failing the refresh.
     init(_ generated: Components.Schemas.LocationCommission) {
-        switch generated {
-        case .case1:
-            self.init(type: "none", percentBps: nil, flatCents: nil, basis: nil)
-        case .case2(let percent):
-            self.init(
-                type: "percent",
-                percentBps: percent.percentBps,
-                flatCents: nil,
-                basis: percent.basis.rawValue
-            )
-        case .case3(let flat):
-            self.init(type: "flat", percentBps: nil, flatCents: flat.flatCents, basis: nil)
-        }
+        self.init(
+            type: generated._type,
+            percentBps: generated.percentBps,
+            flatCents: generated.flatCents,
+            basis: generated.basis
+        )
     }
 }
 
@@ -87,17 +80,14 @@ extension RemoteMachine {
             id: generated.id,
             locationId: generated.locationId,
             name: generated.name,
-            // A raw String here, but the generated enum feeding it is closed:
-            // an unrecognised kind fails the decode, taking the whole refresh
-            // down with it — not just this machine.
-            kind: generated.kind.rawValue,
+            kind: generated.kind,
             make: generated.make,
             model: generated.model,
             serial: generated.serial,
             tagCode: generated.tagCode,
             slots: generated.slots,
             cardReader: generated.cardReader.map {
-                CardReader(provider: $0.provider.rawValue, deviceId: $0.deviceId)
+                CardReader(provider: $0.provider, deviceId: $0.deviceId)
             },
             active: generated.active,
             deletedAt: nil,
