@@ -285,18 +285,34 @@ them. Copy the value from App Store Connect rather than working it out.
 whole mechanism is inert. Raising either one is a deliberate act and takes only
 an api redeploy.
 
+**Set them as variables on the GitHub `production` environment, never on the
+Cloud Run service.** `deploy.sh` deploys the api with `--set-env-vars`, which
+replaces its whole env, so a value set with `gcloud run services update` is
+reset to `0` by the next deploy. CI passes the variables in; a laptop deploy
+reads them with `gh variable get`. Each deploy logs the values it wired.
+
+```sh
+gh variable set IOS_RECOMMENDED_BUILD --env production --body 263291940
+gh variable list --env production
+gh workflow run deploy.yml -f ref="$(gh release view --json tagName -q .tagName)"
+```
+
+That redeploys the latest release tag, which is what is already in production;
+dispatching on `main` would ship whatever has merged since. The tag's own
+`deploy.sh` must pass the floor through, so the first release after v0.17.0.
+
 ### Raising the floor without stranding anyone
 
 Never raise `IOS_MINIMUM_BUILD` first. The order exists because the users it
 targets are exactly the ones who don't install updates.
 
 1. Ship the new build (say, 50) to the App Store.
-2. Set `IOS_RECOMMENDED_BUILD=50` and redeploy. Older builds now get a
+2. Set `IOS_RECOMMENDED_BUILD` to 50 and redeploy. Older builds now get a
    dismissible nudge — nobody is blocked.
 3. **Watch the `stale_client.detected` count in PostHog fall.** Filter on the
    `build` property. This is the only thing that tells you how many users a
    bump would strand.
-4. Once it's near zero, set `IOS_MINIMUM_BUILD=50` and redeploy. Stragglers get
+4. Once it's near zero, set `IOS_MINIMUM_BUILD` to 50 and redeploy. Stragglers get
    the wall.
 
 No app release happens in steps 2–4. `IOS_UPDATE_URL` must point somewhere real
