@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { errorsWithout, isNewlyShown } from "./recordForm.ts";
+import { errorsWithout, isNewlyShown } from "./formErrors.ts";
 
 interface Draft {
   name: string;
