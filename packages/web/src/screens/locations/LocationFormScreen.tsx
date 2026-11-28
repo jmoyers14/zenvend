@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { FormEvent } from "react";
+import { useRecordForm } from "../../forms.ts";
 import {
   Badge,
   DecimalInput,
@@ -20,7 +21,6 @@ import {
   Switch,
   TextArea,
   TextInput,
-  useRecordForm,
 } from "../../ui.tsx";
 import { queryClient, trpc } from "../../trpc.ts";
 import { AddressAutocomplete } from "./AddressAutocomplete.tsx";

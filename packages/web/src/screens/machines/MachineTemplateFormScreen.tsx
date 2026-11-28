@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { FormEvent } from "react";
 import { queryClient, trpc } from "../../trpc.ts";
+import { useRecordForm } from "../../forms.ts";
 import {
   DeleteSection,
   ErrorNote,
@@ -15,7 +16,6 @@ import {
   SaveBar,
   Select,
   TextInput,
-  useRecordForm,
 } from "../../ui.tsx";
 import { MACHINE_KIND_LABELS, type MachineKind } from "./machineKind.ts";
 import { SlotsField } from "./SlotsField.tsx";

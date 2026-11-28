@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { queryClient, trpc } from "../../trpc.ts";
+import { useRecordForm } from "../../forms.ts";
 import {
   Alert,
   Badge,
@@ -20,7 +21,6 @@ import {
   Select,
   Switch,
   TextInput,
-  useRecordForm,
 } from "../../ui.tsx";
 import { plural } from "../../utils/text.ts";
 import {

@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useId, useState } from "react";
 import type { ApiProductPricing } from "../../apiTypes.ts";
+import { useRecordForm } from "../../forms.ts";
 import {
   Badge,
   Button,
@@ -20,7 +21,6 @@ import {
   SectionDivider,
   Switch,
   TextInput,
-  useRecordForm,
 } from "../../ui.tsx";
 import { formatShortDate } from "../../utils/dates.ts";
 import {
