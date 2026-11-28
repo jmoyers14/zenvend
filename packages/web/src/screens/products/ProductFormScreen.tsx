@@ -20,6 +20,7 @@ import {
   SectionDivider,
   Switch,
   TextInput,
+  useRecordForm,
 } from "../../ui.tsx";
 import { formatShortDate } from "../../utils/dates.ts";
 import {
@@ -29,7 +30,6 @@ import {
   parseDollarsToCents,
 } from "../../utils/money.ts";
 import { queryClient, trpc, trpcClient } from "../../trpc.ts";
-import { useRecordForm } from "../useRecordForm.ts";
 import { CatalogSearch } from "./CatalogSearch.tsx";
 import { buildPricingDisplay } from "./pricing.ts";
 import {

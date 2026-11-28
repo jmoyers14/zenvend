@@ -20,9 +20,9 @@ import {
   Switch,
   TextArea,
   TextInput,
+  useRecordForm,
 } from "../../ui.tsx";
 import { queryClient, trpc } from "../../trpc.ts";
-import { useRecordForm } from "../useRecordForm.ts";
 import { AddressAutocomplete } from "./AddressAutocomplete.tsx";
 import {
   buildLocationInput,

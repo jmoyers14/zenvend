@@ -15,8 +15,8 @@ import {
   SaveBar,
   Select,
   TextInput,
+  useRecordForm,
 } from "../../ui.tsx";
-import { useRecordForm } from "../useRecordForm.ts";
 import { MACHINE_KIND_LABELS, type MachineKind } from "./machineKind.ts";
 import { SlotsField } from "./SlotsField.tsx";
 import {

@@ -64,5 +64,6 @@ export { Stepper } from "./ui/Stepper.tsx";
 export { Switch } from "./ui/Switch.tsx";
 export { Select, TextArea, TextInput } from "./ui/TextInput.tsx";
 export type { StatusTone } from "./ui/tone.ts";
-export { useForm } from "./ui/useForm.ts";
-export { useFormDraft } from "./ui/useFormDraft.ts";
+export { useForm } from "./ui/form/useForm.ts";
+export { useFormDraft } from "./ui/form/useFormDraft.ts";
+export { useRecordForm } from "./ui/form/useRecordForm.ts";

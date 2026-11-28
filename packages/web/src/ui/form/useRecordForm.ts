@@ -1,8 +1,7 @@
-import type { QueryKey } from "@tanstack/react-query";
+import { type QueryKey, useQueryClient } from "@tanstack/react-query";
 import { type NavigateOptions, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { queryClient } from "../trpc.ts";
-import { useForm } from "../ui.tsx";
+import { useForm } from "./useForm.ts";
 
 interface RecordFormOptions<Draft extends object, Saved> {
   /** Present means edit. */
@@ -31,6 +30,7 @@ export const useRecordForm = <Draft extends object, Saved>({
   savedQueryKey,
 }: RecordFormOptions<Draft, Saved>) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const form = useForm(emptyDraft);
   const { load, reset, setFormError } = form;
   const isEditing = Boolean(recordId);

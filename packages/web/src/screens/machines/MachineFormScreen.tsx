@@ -20,9 +20,9 @@ import {
   Select,
   Switch,
   TextInput,
+  useRecordForm,
 } from "../../ui.tsx";
 import { plural } from "../../utils/text.ts";
-import { useRecordForm } from "../useRecordForm.ts";
 import {
   buildMachineInput,
   dependentErrorKeysFor,
