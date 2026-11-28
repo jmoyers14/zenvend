@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import type { ApiProduct } from "../../apiTypes.ts";
 import {
   buildProductInput,
   catalogNameFor,
   categorySuggestionsFor,
+  draftFor,
   EMPTY_PRODUCT_DRAFT,
   type ProductDraft,
 } from "./productForm.ts";
@@ -82,5 +84,31 @@ describe("catalogNameFor", () => {
   test("no brand: just the name; no name: null", () => {
     expect(catalogNameFor({ name: "Pretzels", brand: null })).toBe("Pretzels");
     expect(catalogNameFor({ name: null, brand: "Doritos" })).toBeNull();
+  });
+});
+
+describe("draftFor", () => {
+  test("a saved product reopens with blanks for missing fields and a two-decimal price", () => {
+    const product = {
+      name: "7up - 12 oz",
+      category: "Soda",
+      upc: null,
+      taxClass: null,
+      defaultPriceCents: 200,
+      imageUrl: null,
+      active: false,
+      tracksExpiration: true,
+    } as ApiProduct;
+
+    expect(draftFor(product)).toEqual({
+      name: "7up - 12 oz",
+      category: "Soda",
+      upc: "",
+      taxClass: "",
+      price: "2.00",
+      imageUrl: null,
+      isActive: false,
+      tracksExpiration: true,
+    });
   });
 });

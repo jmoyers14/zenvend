@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { ApiMachineTemplate } from "../../apiTypes.ts";
 import {
   buildMachineInput,
+  dependentErrorKeysFor,
   EMPTY_MACHINE_DRAFT,
   fieldErrorsFor,
   type MachineDraft,
@@ -126,4 +127,16 @@ test("orphanedSlotCodesFor lists planned slots the layout no longer has", () => 
   expect(
     orphanedSlotCodesFor({ shelves: [["A1", "A2"]], plannedSlotCodes: ["A1", "A3", "B1"] }),
   ).toEqual(["A3", "B1"]);
+});
+
+describe("dependentErrorKeysFor", () => {
+  test("a reader or template switch clears its follow-up field's error", () => {
+    const keys = dependentErrorKeysFor({ readerProvider: "", shouldSaveAsTemplate: false });
+
+    expect(keys).toEqual(["readerDeviceId", "newTemplateName"]);
+  });
+
+  test("a field with no follow-up clears nothing extra", () => {
+    expect(dependentErrorKeysFor({ name: "Lobby" })).toEqual([]);
+  });
 });

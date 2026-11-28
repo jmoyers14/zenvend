@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { ApiCandidate, ApiProduct } from "../../apiTypes.ts";
 import { queryClient, trpc, trpcClient } from "../../trpc.ts";
+import { useFormDraft } from "../../forms.ts";
 import {
   Button,
   DeleteSection,
@@ -22,7 +23,6 @@ import {
   SaveBar,
   TextArea,
   TextInput,
-  useFormDraft,
 } from "../../ui.tsx";
 import { dateInputFor, formatShortDate, middayInstantFor } from "../../utils/dates.ts";
 import { centsToInput, formatCents } from "../../utils/money.ts";

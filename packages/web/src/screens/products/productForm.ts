@@ -1,3 +1,4 @@
+import type { ApiProduct } from "../../apiTypes.ts";
 import { parseDollarsToCents } from "../../utils/money.ts";
 
 /**
@@ -27,6 +28,21 @@ export const EMPTY_PRODUCT_DRAFT: ProductDraft = {
   isActive: true,
   tracksExpiration: true,
 };
+
+/** Two decimals, so a loaded $2 reads "2.00" like the mockup, not "2". */
+export const priceInputFor = (cents: number) => (cents / 100).toFixed(2);
+
+/** A saved product, reopened for editing. */
+export const draftFor = (product: ApiProduct): ProductDraft => ({
+  name: product.name,
+  category: product.category,
+  upc: product.upc ?? "",
+  taxClass: product.taxClass ?? "",
+  price: priceInputFor(product.defaultPriceCents),
+  imageUrl: product.imageUrl,
+  isActive: product.active,
+  tracksExpiration: product.tracksExpiration,
+});
 
 export interface ProductInput {
   name: string;
